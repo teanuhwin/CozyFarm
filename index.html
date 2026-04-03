@@ -1,0 +1,1639 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌾 Cozy Farm</title>
+<meta name="description" content="A cozy idle farming game">
+<meta name="theme-color" content="#1a1f14">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Nunito:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #1a1f14;
+    --bg2: #242b1a;
+    --bg3: #2e3822;
+    --card: #2a3320;
+    --card2: #333f28;
+    --border: #4a5c35;
+    --text: #d4e8b0;
+    --text2: #8aaa60;
+    --text3: #5a7a3a;
+    --accent: #8bc34a;
+    --accent2: #aedd6e;
+    --gold: #f4c842;
+    --gold2: #ffe066;
+    --red: #e05c4a;
+    --plot-empty: #3d2e1a;
+    --plot-border: #5a4020;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+    --tab-h: 64px;
+    --header-h: 72px;
+  }
+
+  [data-theme="light"] {
+    --bg: #f0ead6;
+    --bg2: #e8dfc4;
+    --bg3: #ddd3b0;
+    --card: #faf5e8;
+    --card2: #f0e8cc;
+    --border: #c8b878;
+    --text: #3a3020;
+    --text2: #6a5830;
+    --text3: #9a8050;
+    --accent: #5a9020;
+    --accent2: #78b830;
+    --gold: #d4940a;
+    --gold2: #e8aa20;
+    --red: #c04030;
+    --plot-empty: #c8a870;
+    --plot-border: #a88040;
+    --shadow: 0 4px 24px rgba(0,0,0,0.15);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    height: var(--header-h);
+    background: var(--bg2);
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    gap: 8px;
+  }
+
+  .logo {
+    font-family: 'Silkscreen', monospace;
+    font-size: 15px;
+    color: var(--accent2);
+    white-space: nowrap;
+    text-shadow: 0 0 12px rgba(139,195,74,0.4);
+  }
+
+  .stats {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .stat-pill {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  .stat-pill .val { color: var(--gold); font-family: 'Silkscreen', monospace; font-size: 13px; }
+  .stat-pill.seeds .val { color: var(--accent2); }
+
+  /* ── TABS ── */
+  .tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--tab-h);
+    background: var(--bg2);
+    border-top: 2px solid var(--border);
+    display: flex;
+    z-index: 100;
+  }
+
+  .tab-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    background: none;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    font-family: 'Nunito', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    transition: color 0.2s, background 0.2s;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .tab-btn .tab-icon { font-size: 22px; line-height: 1; transition: transform 0.2s; }
+  .tab-btn:hover .tab-icon { transform: scale(1.15); }
+  .tab-btn.active { color: var(--accent2); }
+  .tab-btn.active .tab-icon { transform: scale(1.2); }
+
+  /* ── MAIN ── */
+  main {
+    flex: 1;
+    padding: 16px 16px calc(var(--tab-h) + 16px);
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; animation: fadeIn 0.25s ease; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* ── FARM TAB ── */
+  .farm-grid {
+    display: grid;
+    gap: 10px;
+    margin: 0 auto;
+    max-width: 480px;
+  }
+
+  .plot {
+    aspect-ratio: 1;
+    background: var(--plot-empty);
+    border: 2.5px solid var(--plot-border);
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.2s, background 0.2s;
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .plot:hover { transform: scale(1.04); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
+  .plot:active { transform: scale(0.96); }
+
+  .plot.empty { border-color: var(--plot-border); }
+  .plot.planted { background: #3a2e18; border-color: #7a6030; }
+  .plot.ready {
+    background: #2a3a18;
+    border-color: var(--accent);
+    box-shadow: 0 0 14px rgba(139,195,74,0.35);
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes glow-pulse {
+    0%,100% { box-shadow: 0 0 10px rgba(139,195,74,0.3); }
+    50% { box-shadow: 0 0 22px rgba(139,195,74,0.6); }
+  }
+
+  .plot-emoji { font-size: clamp(28px, 8vw, 48px); line-height: 1; }
+  .plot-label {
+    font-size: clamp(9px, 2.5vw, 12px);
+    font-weight: 700;
+    color: var(--text3);
+    margin-top: 4px;
+    font-family: 'Silkscreen', monospace;
+  }
+  .plot.ready .plot-label { color: var(--accent2); }
+
+  .plot-timer {
+    font-size: clamp(8px, 2vw, 11px);
+    color: var(--text3);
+    font-family: 'Silkscreen', monospace;
+    margin-top: 2px;
+  }
+
+  /* progress bar */
+  .plot-progress {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 4px;
+    background: var(--bg3);
+    overflow: hidden;
+    border-radius: 0 0 11px 11px;
+  }
+  .plot-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 1s linear;
+    border-radius: 0 0 11px 11px;
+  }
+
+  /* ── SHOP TAB ── */
+  .section-title {
+    font-family: 'Silkscreen', monospace;
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 20px 0 10px;
+  }
+  .section-title:first-child { margin-top: 0; }
+
+  .shop-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 10px;
+  }
+
+  .shop-icon { font-size: 32px; flex-shrink: 0; }
+
+  .shop-icon.seed-icon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .seed-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -6px;
+    font-size: 14px;
+    line-height: 1;
+    filter: drop-shadow(0 0 2px var(--bg));
+  }
+
+  .shop-info { flex: 1; min-width: 0; }
+  .shop-name { font-weight: 800; font-size: 15px; }
+  .shop-desc { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  .shop-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+
+  .btn {
+    background: var(--accent);
+    color: #1a2a0a;
+    border: none;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s, opacity 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn:hover { background: var(--accent2); transform: scale(1.04); }
+  .btn:active { transform: scale(0.96); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn.gold { background: var(--gold); color: #2a1a00; }
+  .btn.gold:hover { background: var(--gold2); }
+  .btn.danger { background: var(--red); color: #fff; }
+  .btn.sm { padding: 4px 10px; font-size: 12px; }
+
+  .cost-tag {
+    font-size: 11px;
+    color: var(--gold);
+    font-weight: 700;
+    font-family: 'Silkscreen', monospace;
+    display: inline;
+  }
+
+  /* expand grid card */
+  .expand-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .expand-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+  }
+
+  .expand-card .shop-icon { font-size: 28px; }
+  .expand-card .shop-name { font-size: 14px; font-weight: 800; }
+  .expand-card .shop-desc { font-size: 11px; color: var(--text2); }
+
+  /* ── SETTINGS TAB ── */
+  .settings-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .settings-row:last-child { border-bottom: none; }
+
+  .settings-label { flex: 1; }
+  .settings-label .s-title { font-weight: 700; font-size: 14px; }
+  .settings-label .s-desc { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  /* toggle */
+  .toggle {
+    position: relative;
+    width: 46px;
+    height: 26px;
+    flex-shrink: 0;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: var(--bg3);
+    border-radius: 13px;
+    border: 1.5px solid var(--border);
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle-thumb {
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 18px; height: 18px;
+    background: var(--text3);
+    border-radius: 50%;
+    transition: transform 0.2s, background 0.2s;
+  }
+  .toggle input:checked ~ .toggle-track { background: var(--accent); border-color: var(--accent); }
+  .toggle input:checked ~ .toggle-track .toggle-thumb { transform: translateX(20px); background: #fff; }
+
+  .danger-zone {
+    background: color-mix(in srgb, var(--red) 10%, var(--card));
+    border-color: color-mix(in srgb, var(--red) 40%, var(--border));
+  }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: calc(var(--tab-h) + 12px);
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--card2);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    padding: 8px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.25s, transform 0.25s;
+    z-index: 200;
+    pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 300;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; animation: fadeIn 0.2s ease; }
+  .modal-box {
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    max-width: 320px;
+    width: 100%;
+    text-align: center;
+  }
+  .modal-box h3 { font-size: 18px; font-weight: 800; margin-bottom: 8px; }
+  .modal-box p { font-size: 13px; color: var(--text2); margin-bottom: 20px; line-height: 1.5; }
+  .modal-actions { display: flex; gap: 10px; justify-content: center; }
+
+  /* ── MISC ── */
+  .empty-hint {
+    text-align: center;
+    color: var(--text3);
+    font-size: 13px;
+    margin-top: 24px;
+    line-height: 1.6;
+  }
+
+  .plot-mods {
+    position: absolute;
+    top: 4px; right: 5px;
+    font-size: clamp(8px, 2vw, 11px);
+    line-height: 1;
+  }
+
+  /* farm toolbar */
+  .farm-toolbar {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .crop-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .crop-btn.selected {
+    border-color: var(--accent);
+    color: var(--accent2);
+    background: var(--card2);
+  }
+  .crop-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .crop-btn .crop-stock { font-size: 11px; color: var(--text3); font-family: 'Silkscreen', monospace; }
+
+  .grid-size-badge {
+    display: inline-block;
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 3px 10px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 11px;
+    color: var(--text2);
+    margin-bottom: 8px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🌾 Cozy Farm</div>
+  <div class="stats">
+    <div class="stat-pill">🪙 <span class="val" id="coin-display">0</span></div>
+    <div class="stat-pill seeds">🌱 <span class="val" id="seed-display">5</span></div>
+    <div class="stat-pill" id="barn-pill">🏚️ <span class="val" id="barn-display">0/20</span></div>
+    <div class="stat-pill" id="gloves-pill" style="display:none">🧤 <span class="val" id="gloves-display">0</span></div>
+  </div>
+</header>
+
+<main>
+  <!-- FARM -->
+  <div id="tab-farm" class="tab-panel active">
+    <!-- Crop selector -->
+    <div class="farm-toolbar" id="farm-toolbar">
+      <button class="crop-btn selected" id="crop-btn-wheat" onclick="selectCrop('wheat')">
+        🌾 Wheat <span class="crop-stock" id="toolbar-wheat-seeds">0</span>
+      </button>
+      <button class="crop-btn" id="crop-btn-corn" onclick="selectCrop('corn')">
+        🌽 Corn <span class="crop-stock" id="toolbar-corn-seeds">0</span>
+      </button>
+      <button class="crop-btn" id="crop-btn-pumpkin" onclick="selectCrop('pumpkin')">
+        🎃 Pumpkin <span class="crop-stock" id="toolbar-pumpkin-seeds">0</span>
+      </button>
+      <button class="crop-btn" id="crop-btn-truffle" onclick="selectCrop('truffle')">
+        🍄 Truffle <span class="crop-stock" id="toolbar-truffle-seeds">0</span>
+      </button>
+    </div>
+    <div style="text-align:center">
+      <div class="grid-size-badge" id="grid-size-badge">2 × 2</div>
+    </div>
+    <div class="farm-grid" id="farm-grid"></div>
+    <p class="empty-hint" id="farm-hint"></p>
+  </div>
+
+  <!-- SHOP -->
+  <div id="tab-shop" class="tab-panel">
+
+    <div class="section-title">💰 Sell Crops</div>
+
+    <div class="shop-card">
+      <div class="shop-icon">💰</div>
+      <div class="shop-info">
+        <div class="shop-name">Sell All Crops</div>
+        <div class="shop-desc">Sell everything in the barn at once</div>
+      </div>
+      <div class="shop-actions">
+        <button class="btn gold" id="sell-all-crops-btn" onclick="sellAllCrops()">Sell All</button>
+      </div>
+    </div>
+
+    <div class="shop-card">
+      <div class="shop-icon">🌾</div>
+      <div class="shop-info">
+        <div class="shop-name">Sell Wheat</div>
+        <div class="shop-desc">10🪙 each</div>
+        <div class="cost-tag" style="margin-top:4px" id="wheat-barn-count">0 in barn</div>
+      </div>
+      <div class="shop-actions">
+        <button class="btn gold sm" id="sell-wheat-all-btn" onclick="sellCrop('wheat','all')">Sell All</button>
+        <button class="btn sm" id="sell-wheat1-btn" onclick="sellCrop('wheat',1)">Sell 1 <span class="cost-tag">🪙10</span></button>
+      </div>
+    </div>
+
+    <div class="shop-card">
+      <div class="shop-icon">🌽</div>
+      <div class="shop-info">
+        <div class="shop-name">Sell Corn</div>
+        <div class="shop-desc">40🪙 each</div>
+        <div class="cost-tag" style="margin-top:4px" id="corn-barn-count">0 in barn</div>
+      </div>
+      <div class="shop-actions">
+        <button class="btn gold sm" id="sell-corn-all-btn" onclick="sellCrop('corn','all')">Sell All</button>
+        <button class="btn sm" id="sell-corn1-btn" onclick="sellCrop('corn',1)">Sell 1 <span class="cost-tag">🪙40</span></button>
+      </div>
+    </div>
+
+    <div class="shop-card">
+      <div class="shop-icon">🎃</div>
+      <div class="shop-info">
+        <div class="shop-name">Sell Pumpkin</div>
+        <div class="shop-desc">80🪙 each</div>
+        <div class="cost-tag" style="margin-top:4px" id="pumpkin-barn-count">0 in barn</div>
+      </div>
+      <div class="shop-actions">
+        <button class="btn gold sm" id="sell-pumpkin-all-btn" onclick="sellCrop('pumpkin','all')">Sell All</button>
+        <button class="btn sm" id="sell-pumpkin1-btn" onclick="sellCrop('pumpkin',1)">Sell 1 <span class="cost-tag">🪙80</span></button>
+      </div>
+    </div>
+
+    <div class="shop-card">
+      <div class="shop-icon">🍄</div>
+      <div class="shop-info">
+        <div class="shop-name">Sell Truffle</div>
+        <div class="shop-desc">220🪙 each</div>
+        <div class="cost-tag" style="margin-top:4px" id="truffle-barn-count">0 in barn</div>
+      </div>
+      <div class="shop-actions">
+        <button class="btn gold sm" id="sell-truffle-all-btn" onclick="sellCrop('truffle','all')">Sell All</button>
+        <button class="btn sm" id="sell-truffle1-btn" onclick="sellCrop('truffle',1)">Sell 1 <span class="cost-tag">🪙220</span></button>
+      </div>
+    </div>
+
+    <div class="section-title">🌱 Seeds</div>
+
+    <div class="shop-card">
+      <div class="shop-icon seed-icon">🌾<span class="seed-badge">🌱</span></div>
+      <div class="shop-info">
+        <div class="shop-name">Wheat Seeds</div>
+        <div class="shop-desc">Grows in 2 min · Sells for 10🪙</div>
+        <div class="cost-tag" style="margin-top:4px" id="wheat-seed-count">0 owned</div>
+      </div>
+      <div class="shop-actions">
+        <button class="btn sm" id="buy-wheat1-btn" onclick="buySeeds('wheat',1)">Buy 1 <span class="cost-tag">🪙5</span></button>
+        <button class="btn sm" id="buy-wheat10-btn" onclick="buySeeds('wheat',10)">Buy 10 <span class="cost-tag">🪙50</span></button>
+      </div>
+    </div>
+
+    <div class="shop-card">
+      <div class="shop-icon seed-icon">🌽<span class="seed-badge">🌱</span></div>
+      <div class="shop-info">
+        <div class="shop-name">Corn Seeds</div>
+        <div class="shop-desc">Grows in 8 min · Sells for 40🪙</div>
+        <div class="cost-tag" style="margin-top:4px" id="corn-seed-count">0 owned</div>
+        <div id="corn-unlock-msg" style="font-size:11px;color:var(--text3);margin-top:4px">🔒 Earn 200🪙 lifetime to unlock</div>
+      </div>
+      <div class="shop-actions" id="corn-shop-actions" style="display:none">
+        <button class="btn sm" id="buy-corn1-btn" onclick="buySeeds('corn',1)">Buy 1 <span class="cost-tag">🪙15</span></button>
+        <button class="btn sm" id="buy-corn5-btn" onclick="buySeeds('corn',5)">Buy 5 <span class="cost-tag">🪙75</span></button>
+      </div>
+    </div>
+
+    <div class="shop-card">
+      <div class="shop-icon seed-icon">🎃<span class="seed-badge">🌱</span></div>
+      <div class="shop-info">
+        <div class="shop-name">Pumpkin Seeds</div>
+        <div class="shop-desc">Grows in 15 min · Sells for 80🪙</div>
+        <div class="cost-tag" style="margin-top:4px" id="pumpkin-seed-count">0 owned</div>
+        <div id="pumpkin-unlock-msg" style="font-size:11px;color:var(--text3);margin-top:4px">🔒 Earn 500🪙 lifetime to unlock</div>
+      </div>
+      <div class="shop-actions" id="pumpkin-shop-actions" style="display:none">
+        <button class="btn sm" id="buy-pumpkin1-btn" onclick="buySeeds('pumpkin',1)">Buy 1 <span class="cost-tag">🪙25</span></button>
+        <button class="btn sm" id="buy-pumpkin3-btn" onclick="buySeeds('pumpkin',3)">Buy 3 <span class="cost-tag">🪙75</span></button>
+      </div>
+    </div>
+
+    <div class="shop-card">
+      <div class="shop-icon seed-icon">🍄<span class="seed-badge">🌱</span></div>
+      <div class="shop-info">
+        <div class="shop-name">Truffle Seeds</div>
+        <div class="shop-desc">Grows in 45 min · Sells for 220🪙</div>
+        <div class="cost-tag" style="margin-top:4px" id="truffle-seed-count">0 owned</div>
+        <div id="truffle-unlock-msg" style="font-size:11px;color:var(--text3);margin-top:4px">🔒 Earn 1500🪙 lifetime to unlock</div>
+      </div>
+      <div class="shop-actions" id="truffle-shop-actions" style="display:none">
+        <button class="btn sm" id="buy-truffle1-btn" onclick="buySeeds('truffle',1)">Buy 1 <span class="cost-tag">🪙50</span></button>
+        <button class="btn sm" id="buy-truffle3-btn" onclick="buySeeds('truffle',3)">Buy 3 <span class="cost-tag">🪙150</span></button>
+      </div>
+    </div>
+
+    <div class="section-title">🧪 Supplies</div>
+
+    <div class="shop-card">
+      <div class="shop-icon">💧</div>
+      <div class="shop-info">
+        <div class="shop-name">Water</div>
+        <div class="shop-desc">Apply to one growing plot · 35% faster grow</div>
+        <div class="cost-tag" style="margin-top:4px" id="water-count">0 owned</div>
+      </div>
+      <div class="shop-actions">
+        <button class="btn sm" id="buy-water1-btn" onclick="buyWater(1)">Buy 1 <span class="cost-tag">🪙6</span></button>
+        <button class="btn sm" id="buy-water5-btn" onclick="buyWater(5)">Buy 5 <span class="cost-tag">🪙30</span></button>
+      </div>
+    </div>
+
+    <div class="shop-card">
+      <div class="shop-icon">🚿</div>
+      <div class="shop-info">
+        <div class="shop-name">Water Hose</div>
+        <div class="shop-desc">Waters all growing plots instantly · 35% faster each</div>
+      </div>
+      <div class="shop-actions">
+        <button class="btn sm" id="buy-hose-btn" onclick="buyWaterHose()">Use <span class="cost-tag">🪙130</span></button>
+      </div>
+    </div>
+
+    <div class="shop-card">
+      <div class="shop-icon">🌿</div>
+      <div class="shop-info">
+        <div class="shop-name">Fertilizer</div>
+        <div class="shop-desc">Apply to one growing plot · +2 yield on harvest</div>
+        <div class="cost-tag" style="margin-top:4px" id="fert-count">0 owned</div>
+      </div>
+      <div class="shop-actions">
+        <button class="btn sm" id="buy-fert1-btn" onclick="buyFertilizer(1)">Buy 1 <span class="cost-tag">🪙8</span></button>
+        <button class="btn sm" id="buy-fert5-btn" onclick="buyFertilizer(5)">Buy 5 <span class="cost-tag">🪙40</span></button>
+      </div>
+    </div>
+
+    <div class="shop-card">
+      <div class="shop-icon">🧺</div>
+      <div class="shop-info">
+        <div class="shop-name">Big Fertilizer</div>
+        <div class="shop-desc">Fertilizes all growing plots instantly · +2 yield each</div>
+      </div>
+      <div class="shop-actions">
+        <button class="btn sm" id="buy-bigfert-btn" onclick="buyBigFertilizer()">Use <span class="cost-tag">🪙160</span></button>
+      </div>
+    </div>
+
+    <div class="shop-card">
+      <div class="shop-icon">🧤</div>
+      <div class="shop-info">
+        <div class="shop-name">Gloves</div>
+        <div class="shop-desc">60% chance to recover a seed on harvest · 20 uses</div>
+        <div class="cost-tag" style="margin-top:4px" id="gloves-status">Not equipped</div>
+      </div>
+      <div class="shop-actions">
+        <button class="btn sm" id="buy-gloves-btn" onclick="buyGloves()">Buy <span class="cost-tag">🪙80</span></button>
+      </div>
+    </div>
+
+    <div class="section-title">🏚️ Barn</div>
+    <div class="shop-card">
+      <div class="shop-icon">🏚️</div>
+      <div class="shop-info">
+        <div class="shop-name">Barn Storage</div>
+        <div class="shop-desc">Max crops you can hold before selling</div>
+        <div class="cost-tag" style="margin-top:4px" id="barn-cap-display">0/20</div>
+      </div>
+      <div class="shop-actions">
+        <button class="btn sm" id="barn-upgrade-btn" onclick="upgradeBarn()">Upgrade</button>
+        <div class="cost-tag" id="barn-upgrade-cost">🪙60 → 40 cap</div>
+      </div>
+    </div>
+
+    <div class="section-title">🏡 Expand Farm</div>
+    <div class="expand-grid">
+      <div class="expand-card">
+        <div class="shop-icon">➕</div>
+        <div class="shop-name">Add Row</div>
+        <div class="shop-desc" id="row-desc">Adds a new row of plots</div>
+        <button class="btn sm" id="row-btn" onclick="expandGrid('row')">Buy</button>
+        <div class="cost-tag" id="row-cost">🪙 50</div>
+      </div>
+      <div class="expand-card">
+        <div class="shop-icon">➕</div>
+        <div class="shop-name">Add Column</div>
+        <div class="shop-desc" id="col-desc">Adds a new column of plots</div>
+        <button class="btn sm" id="col-btn" onclick="expandGrid('col')">Buy</button>
+        <div class="cost-tag" id="col-cost">🪙 50</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="tab-settings" class="tab-panel">
+    <div class="section-title">🎨 Display</div>
+    <div class="settings-card">
+      <div class="settings-row">
+        <div class="settings-label">
+          <div class="s-title">🌗 Dark Mode</div>
+          <div class="s-desc">Toggle light / dark theme</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="setting-dark" onchange="saveSetting('dark', this.checked); applyTheme()">
+          <div class="toggle-track"><div class="toggle-thumb"></div></div>
+        </label>
+      </div>
+    </div>
+
+    <div class="section-title">📳 Feedback</div>
+    <div class="settings-card">
+      <div class="settings-row">
+        <div class="settings-label">
+          <div class="s-title">📳 Vibrate on Ready</div>
+          <div class="s-desc">Pulse when a crop finishes growing</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="setting-vibrate" onchange="saveSetting('vibrate', this.checked)">
+          <div class="toggle-track"><div class="toggle-thumb"></div></div>
+        </label>
+      </div>
+    </div>
+
+    <div class="section-title">⚠️ Danger Zone</div>
+    <div class="settings-card danger-zone">
+      <div class="settings-row">
+        <div class="settings-label">
+          <div class="s-title">🗑️ Reset Save Data</div>
+          <div class="s-desc">Wipe all progress and start fresh</div>
+        </div>
+        <button class="btn danger sm" onclick="confirmReset()">Reset</button>
+      </div>
+    </div>
+
+    <p class="empty-hint" style="margin-top:32px; font-size:11px;">🌾 Cozy Farm v1.0 · Saves locally in your browser</p>
+  </div>
+</main>
+
+<!-- Tab bar -->
+<nav class="tab-bar">
+  <button class="tab-btn active" data-tab="farm" onclick="switchTab('farm', this)">
+    <span class="tab-icon">🌾</span>Farm
+  </button>
+  <button class="tab-btn" data-tab="shop" onclick="switchTab('shop', this)">
+    <span class="tab-icon">🏪</span>Shop
+  </button>
+  <button class="tab-btn" data-tab="settings" onclick="switchTab('settings', this)">
+    <span class="tab-icon">⚙️</span>Settings
+  </button>
+</nav>
+
+<div id="toast"></div>
+
+<!-- Plot options modal -->
+<div class="modal-overlay" id="plot-modal">
+  <div class="modal-box">
+    <h3 id="plot-modal-title">🌱 Growing</h3>
+    <p id="plot-modal-desc"></p>
+    <div class="modal-actions" id="plot-modal-actions"></div>
+    <div style="margin-top:10px">
+      <button class="btn sm" style="width:100%;background:var(--card2);color:var(--text2)" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset confirm modal -->
+<div class="modal-overlay" id="reset-modal">
+  <div class="modal-box">
+    <h3>🗑️ Reset Everything?</h3>
+    <p>This will wipe all your coins, seeds, crops, and farm progress. There's no undo!</p>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn danger" onclick="doReset()">Yes, Reset</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONSTANTS ─────────────────────────────────────────────
+const CROPS = {
+  wheat: {
+    emoji: '🌾', seedling: '🌱', name: 'Wheat',
+    growMs: 2 * 60 * 1000,
+    seedCost: 5, sellPrice: 10, yield: 1,
+  },
+  corn: {
+    emoji: '🌽', seedling: '🪴', name: 'Corn',
+    growMs: 8 * 60 * 1000,
+    seedCost: 15, sellPrice: 40, yield: 1,
+    unlockCoins: 200,
+  },
+  pumpkin: {
+    emoji: '🎃', seedling: '🌿', name: 'Pumpkin',
+    growMs: 15 * 60 * 1000,
+    seedCost: 25, sellPrice: 80, yield: 1,
+    unlockCoins: 500,
+  },
+  truffle: {
+    emoji: '🍄', seedling: '🟤', name: 'Truffle',
+    growMs: 45 * 60 * 1000,
+    seedCost: 50, sellPrice: 220, yield: 1,
+    unlockCoins: 1500,
+  },
+};
+
+const WATER_COST      = 6;
+const WATER_HOSE_COST = 130;  // waters whole grid
+const WATER_SPEEDUP   = 0.65;
+const FERT_COST       = 8;
+const BIG_FERT_COST   = 160;  // fertilizes whole grid
+const FERT_YIELD      = 2;
+const GLOVES_COST     = 80;
+const GLOVES_USES     = 20;
+const GLOVES_CHANCE   = 0.60;
+
+const BARN_BASE_CAP = 20;
+const BARN_UPGRADES = [
+  { cap: 40,  cost: 60  },
+  { cap: 60,  cost: 150 },
+  { cap: 100, cost: 350 },
+];
+
+const EXPAND_BASE = 50;
+const EXPAND_MULT = 2.5;
+const MAX_ROWS = 6;
+const MAX_COLS = 6;
+
+// ── STATE ─────────────────────────────────────────────────
+let state = {
+  coins: 0,
+  lifetimeCoins: 0,
+  // inventory
+  wheatSeeds: 5, cornSeeds: 0, pumpkinSeeds: 0, truffleSeeds: 0,
+  water: 0, fertilizer: 0,
+  glovesDurability: 0,
+  wheat: 0, corn: 0, pumpkin: 0, truffle: 0,
+  barnLevel: 0,               // index into BARN_UPGRADES (-1 = base)
+  // farm
+  rows: 2, cols: 2,
+  rowExpands: 0, colExpands: 0,
+  plots: [],
+  // plots: { state, crop, plantedAt, watered, fertilized }
+};
+
+let notifiedPlots = new Set();
+
+let settings = {
+  dark: true,
+  vibrate: false,
+};
+
+// ── STORAGE ───────────────────────────────────────────────
+function saveState() {
+  localStorage.setItem('cozyfarm_state', JSON.stringify(state));
+}
+
+function loadState() {
+  const raw = localStorage.getItem('cozyfarm_state');
+  if (raw) {
+    try {
+      const saved = JSON.parse(raw);
+      state = { ...state, ...saved };
+    } catch(e) {}
+  }
+}
+
+function saveSetting(key, val) {
+  settings[key] = val;
+  localStorage.setItem('cozyfarm_settings', JSON.stringify(settings));
+}
+
+function loadSettings() {
+  const raw = localStorage.getItem('cozyfarm_settings');
+  if (raw) {
+    try { settings = { ...settings, ...JSON.parse(raw) }; } catch(e) {}
+  }
+}
+
+// ── THEME ─────────────────────────────────────────────────
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', settings.dark ? 'dark' : 'light');
+}
+
+// ── TABS ──────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'shop') updateShopUI();
+}
+
+// ── PLOT LOGIC ────────────────────────────────────────────
+function initPlots() {
+  const needed = state.rows * state.cols;
+  while (state.plots.length < needed) {
+    state.plots.push({ state: 'empty', crop: null, plantedAt: null, watered: false, fertilized: false });
+  }
+  state.plots = state.plots.slice(0, needed);
+}
+
+// Which crop type is currently "selected" for planting
+let selectedCrop = 'wheat';
+
+function selectCrop(type) {
+  selectedCrop = type;
+  updateFarmToolbar();
+}
+
+function barnCap() {
+  if (state.barnLevel <= 0) return BARN_BASE_CAP;
+  return BARN_UPGRADES[state.barnLevel - 1].cap;
+}
+
+function totalBarnContents() {
+  return (state.wheat || 0) + (state.corn || 0) + (state.pumpkin || 0) + (state.truffle || 0);
+}
+
+function clickPlot(idx) {
+  const plot = state.plots[idx];
+  if (plot.state === 'empty') {
+    const seedKey = selectedCrop + 'Seeds';
+    if ((state[seedKey] || 0) < 1) {
+      toast(`No ${CROPS[selectedCrop].name} seeds! Buy some in the Shop.`);
+      return;
+    }
+    if (totalBarnContents() >= barnCap() && !plot.watered && !plot.fertilized) {
+      // Barn cap only matters at harvest time, so just warn if relevant
+    }
+    state[seedKey]--;
+    plot.state = 'planted';
+    plot.crop = selectedCrop;
+    plot.plantedAt = Date.now();
+    plot.watered = false;
+    plot.fertilized = false;
+    saveState();
+    renderPlot(idx);
+    updateHeader();
+    updateFarmToolbar();
+  } else if (plot.state === 'planted') {
+    // Show options: water, fertilize, or time remaining
+    showPlotOptions(idx);
+  } else if (plot.state === 'ready') {
+    harvestPlot(idx);
+  }
+}
+
+function showPlotOptions(idx) {
+  const plot = state.plots[idx];
+  const crop = CROPS[plot.crop];
+  const elapsed = Date.now() - plot.plantedAt;
+  const growMs = plot.watered ? crop.growMs * WATER_SPEEDUP : crop.growMs;
+  const remaining = Math.max(0, Math.ceil((growMs - elapsed) / 1000));
+
+  let msg = `⏳ ${formatTime(remaining)} left`;
+  const actions = [];
+  if (!plot.watered && state.water > 0) actions.push(`💧 Water (${formatTime(Math.ceil(growMs * (1 - WATER_SPEEDUP) / 1000))} faster)`);
+  if (!plot.fertilized && state.fertilizer > 0) actions.push(`🌿 Fertilize (+${FERT_YIELD} yield)`);
+  if (actions.length === 0) {
+    toast(msg);
+    return;
+  }
+  // Show modal with options
+  openPlotModal(idx, remaining, plot.watered, plot.fertilized);
+}
+
+function applyWater(idx) {
+  const plot = state.plots[idx];
+  if (plot.watered) { closeModal(); return; }
+  if (state.water < 1) { toast('No water! Buy some in the Shop.'); closeModal(); return; }
+  state.water--;
+  plot.watered = true;
+  saveState();
+  renderPlot(idx);
+  updateHeader();
+  updateShopUI();
+  closeModal();
+  toast('💧 Watered! Growing faster.');
+}
+
+function applyFertilizer(idx) {
+  const plot = state.plots[idx];
+  if (plot.fertilized) { closeModal(); return; }
+  if (state.fertilizer < 1) { toast('No fertilizer! Buy some in the Shop.'); closeModal(); return; }
+  state.fertilizer--;
+  plot.fertilized = true;
+  saveState();
+  renderPlot(idx);
+  updateHeader();
+  updateShopUI();
+  closeModal();
+  toast('🌿 Fertilized! Extra yield on harvest.');
+}
+
+function harvestPlot(idx) {
+  const plot = state.plots[idx];
+  const crop = CROPS[plot.crop || 'wheat'];
+  const cropKey = plot.crop || 'wheat';
+
+  // Yield calculation
+  let yieldAmt = crop.yield;
+  if (plot.fertilized) yieldAmt += FERT_YIELD;
+
+  // Barn cap check
+  const space = barnCap() - totalBarnContents();
+  if (space <= 0) {
+    toast(`🏚️ Barn full! Sell some crops first.`);
+    return;
+  }
+  yieldAmt = Math.min(yieldAmt, space);
+
+  state[cropKey] = (state[cropKey] || 0) + yieldAmt;
+
+  // Gloves: chance to recover seed
+  let seedReturned = false;
+  if (state.glovesDurability > 0) {
+    if (Math.random() < GLOVES_CHANCE) {
+      const seedKey = cropKey + 'Seeds';
+      state[seedKey] = (state[seedKey] || 0) + 1;
+      seedReturned = true;
+    }
+    state.glovesDurability--;
+    if (state.glovesDurability === 0) toast('🧤 Gloves worn out! Buy new ones.');
+  }
+
+  plot.state = 'empty';
+  plot.crop = null;
+  plot.plantedAt = null;
+  plot.watered = false;
+  plot.fertilized = false;
+  notifiedPlots.delete(idx);
+
+  saveState();
+  renderPlot(idx);
+  updateHeader();
+  updateShopUI();
+  updateFarmToolbar();
+
+  const extra = seedReturned ? ' 🌱 Seed returned!' : '';
+  toast(`${crop.emoji} Harvested ${yieldAmt} ${crop.name}!${extra}`);
+}
+
+function sellAllCrops() {
+  const total = totalBarnContents();
+  if (total === 0) { toast('Nothing in the barn!'); return; }
+  let earned = 0;
+  ['wheat','corn','pumpkin','truffle'].forEach(k => {
+    if (state[k] > 0) {
+      earned += state[k] * CROPS[k].sellPrice;
+      state[k] = 0;
+    }
+  });
+  state.coins += earned;
+  const prevLifetime = state.lifetimeCoins || 0;
+  state.lifetimeCoins = prevLifetime + earned;
+  checkUnlocks(prevLifetime, state.lifetimeCoins);
+  saveState();
+  updateHeader();
+  updateShopUI();
+  updateFarmToolbar();
+  toast(`🪙 Sold everything for ${earned} coins!`);
+}
+
+function checkUnlocks(prev, next) {
+  Object.entries(CROPS).forEach(([key, crop]) => {
+    if (crop.unlockCoins && prev < crop.unlockCoins && next >= crop.unlockCoins) {
+      toast(`🔓 ${crop.emoji} ${crop.name} seeds unlocked! Check the Shop.`);
+    }
+  });
+}
+
+function sellCrop(cropKey, amount) {
+  const stock = state[cropKey] || 0;
+  if (stock === 0) { toast(`No ${CROPS[cropKey].name} to sell!`); return; }
+  const qty = amount === 'all' ? stock : Math.min(amount, stock);
+  const earned = qty * CROPS[cropKey].sellPrice;
+  state[cropKey] -= qty;
+  state.coins += earned;
+  const prevLifetime = state.lifetimeCoins || 0;
+  state.lifetimeCoins = prevLifetime + earned;
+  checkUnlocks(prevLifetime, state.lifetimeCoins);
+  saveState();
+  updateHeader();
+  updateShopUI();
+  updateFarmToolbar();
+  const label = qty === 1 ? `1 ${CROPS[cropKey].name}` : `${qty} ${CROPS[cropKey].name}`;
+  toast(`🪙 Sold ${label} for ${earned} coins!`);
+}
+
+function buySeeds(cropKey, n) {
+  const cost = n * CROPS[cropKey].seedCost;
+  if (state.coins < cost) { toast(`Need ${cost}🪙!`); return; }
+  state.coins -= cost;
+  const seedKey = cropKey + 'Seeds';
+  state[seedKey] = (state[seedKey] || 0) + n;
+  saveState();
+  updateHeader();
+  updateShopUI();
+  toast(`${CROPS[cropKey].seedling} Bought ${n} ${CROPS[cropKey].name} seed${n>1?'s':''}!`);
+}
+
+function buyWater(n) {
+  const cost = n * WATER_COST;
+  if (state.coins < cost) { toast(`Need ${cost}🪙!`); return; }
+  state.coins -= cost;
+  state.water = (state.water || 0) + n;
+  saveState();
+  updateHeader();
+  updateShopUI();
+  toast(`💧 Bought ${n} water!`);
+}
+
+function buyFertilizer(n) {
+  const cost = n * FERT_COST;
+  if (state.coins < cost) { toast(`Need ${cost}🪙!`); return; }
+  state.coins -= cost;
+  state.fertilizer = (state.fertilizer || 0) + n;
+  saveState();
+  updateHeader();
+  updateShopUI();
+  toast(`🌿 Bought ${n} fertilizer!`);
+}
+
+function buyWaterHose() {
+  if (state.coins < WATER_HOSE_COST) { toast(`Need ${WATER_HOSE_COST}🪙!`); return; }
+  const targets = state.plots.filter(p => p.state === 'planted' && !p.watered);
+  if (targets.length === 0) { toast('No unwatered growing plots!'); return; }
+  state.coins -= WATER_HOSE_COST;
+  targets.forEach(p => { p.watered = true; });
+  saveState();
+  renderGrid();
+  updateHeader();
+  updateShopUI();
+  toast(`💧 Watered all ${targets.length} growing plot${targets.length > 1 ? 's' : ''}!`);
+}
+
+function buyBigFertilizer() {
+  if (state.coins < BIG_FERT_COST) { toast(`Need ${BIG_FERT_COST}🪙!`); return; }
+  const targets = state.plots.filter(p => p.state === 'planted' && !p.fertilized);
+  if (targets.length === 0) { toast('No unfertilized growing plots!'); return; }
+  state.coins -= BIG_FERT_COST;
+  targets.forEach(p => { p.fertilized = true; });
+  saveState();
+  renderGrid();
+  updateHeader();
+  updateShopUI();
+  toast(`🌿 Fertilized all ${targets.length} growing plot${targets.length > 1 ? 's' : ''}!`);
+}
+
+function buyGloves() {
+  if (state.glovesDurability > 0) { toast('Gloves still have durability!'); return; }
+  if (state.coins < GLOVES_COST) { toast(`Need ${GLOVES_COST}🪙!`); return; }
+  state.coins -= GLOVES_COST;
+  state.glovesDurability = GLOVES_USES;
+  saveState();
+  updateHeader();
+  updateShopUI();
+  toast(`🧤 Gloves equipped! ${GLOVES_USES} uses.`);
+}
+
+function upgradeBarn() {
+  const nextLevel = (state.barnLevel || 0) + 1;
+  if (nextLevel > BARN_UPGRADES.length) { toast('Max barn size!'); return; }
+  const upgrade = BARN_UPGRADES[nextLevel - 1];
+  if (state.coins < upgrade.cost) { toast(`Need ${upgrade.cost}🪙!`); return; }
+  state.coins -= upgrade.cost;
+  state.barnLevel = nextLevel;
+  saveState();
+  updateHeader();
+  updateShopUI();
+  toast(`🏚️ Barn upgraded! Now holds ${upgrade.cap} crops.`);
+}
+
+// ── EXPAND ────────────────────────────────────────────────
+function expandCost(type) {
+  const n = type === 'row' ? state.rowExpands : state.colExpands;
+  return Math.round(EXPAND_BASE * Math.pow(EXPAND_MULT, n));
+}
+
+function expandGrid(type) {
+  if (type === 'row' && state.rows >= MAX_ROWS) { toast(`Max ${MAX_ROWS} rows reached!`); return; }
+  if (type === 'col' && state.cols >= MAX_COLS) { toast(`Max ${MAX_COLS} columns reached!`); return; }
+  const cost = expandCost(type);
+  if (state.coins < cost) { toast(`Need ${cost}🪙 to expand!`); return; }
+  state.coins -= cost;
+  if (type === 'row') { state.rows++; state.rowExpands++; }
+  else { state.cols++; state.colExpands++; }
+  initPlots();
+  saveState();
+  renderGrid();
+  updateHeader();
+  updateShopUI();
+  toast(type === 'row' ? '🏡 New row added!' : '🏡 New column added!');
+}
+
+// ── FARM TOOLBAR ──────────────────────────────────────────
+function updateFarmToolbar() {
+  const cornUnlocked     = (state.lifetimeCoins || 0) >= CROPS.corn.unlockCoins;
+  const pumpkinUnlocked  = (state.lifetimeCoins || 0) >= CROPS.pumpkin.unlockCoins;
+  const truffleUnlocked  = (state.lifetimeCoins || 0) >= CROPS.truffle.unlockCoins;
+
+  el('crop-btn-wheat').classList.toggle('selected', selectedCrop === 'wheat');
+  el('crop-btn-corn').classList.toggle('selected', selectedCrop === 'corn');
+  el('crop-btn-pumpkin').classList.toggle('selected', selectedCrop === 'pumpkin');
+  el('crop-btn-truffle').classList.toggle('selected', selectedCrop === 'truffle');
+
+  el('crop-btn-corn').disabled = !cornUnlocked;
+  el('crop-btn-pumpkin').disabled = !pumpkinUnlocked;
+  el('crop-btn-truffle').disabled = !truffleUnlocked;
+
+  el('toolbar-wheat-seeds').textContent   = `×${state.wheatSeeds || 0}`;
+  el('toolbar-corn-seeds').textContent    = cornUnlocked    ? `×${state.cornSeeds || 0}`    : '🔒';
+  el('toolbar-pumpkin-seeds').textContent = pumpkinUnlocked ? `×${state.pumpkinSeeds || 0}` : '🔒';
+  el('toolbar-truffle-seeds').textContent = truffleUnlocked ? `×${state.truffleSeeds || 0}` : '🔒';
+}
+
+// ── PLOT MODAL ────────────────────────────────────────────
+function openPlotModal(idx, remainingSecs, alreadyWatered, alreadyFertilized) {
+  const crop = CROPS[state.plots[idx].crop || 'wheat'];
+  el('plot-modal-title').textContent = `${crop.seedling} Growing ${crop.name}`;
+  el('plot-modal-desc').textContent = `⏳ ${formatTime(remainingSecs)} until ready`;
+
+  const actions = el('plot-modal-actions');
+  actions.innerHTML = '';
+
+  if (!alreadyWatered) {
+    const btn = document.createElement('button');
+    btn.className = 'btn sm';
+    const canWater = (state.water || 0) > 0;
+    btn.disabled = !canWater;
+    btn.textContent = canWater ? `💧 Water (${state.water} left)` : '💧 No water';
+    btn.onclick = () => applyWater(idx);
+    actions.appendChild(btn);
+  }
+
+  if (!alreadyFertilized) {
+    const btn = document.createElement('button');
+    btn.className = 'btn sm';
+    const canFert = (state.fertilizer || 0) > 0;
+    btn.disabled = !canFert;
+    btn.textContent = canFert ? `🌿 Fertilize (${state.fertilizer} left)` : '🌿 No fertilizer';
+    btn.onclick = () => applyFertilizer(idx);
+    actions.appendChild(btn);
+  }
+
+  if (alreadyWatered && alreadyFertilized) {
+    el('plot-modal-desc').textContent += '\n✅ Watered & Fertilized!';
+  }
+
+  el('plot-modal').classList.add('open');
+}
+function el(id) { return document.getElementById(id); }
+
+// ── RENDER ────────────────────────────────────────────────
+function renderGrid() {
+  const grid = document.getElementById('farm-grid');
+  grid.style.gridTemplateColumns = `repeat(${state.cols}, 1fr)`;
+  // Ensure correct number of plot elements
+  const needed = state.rows * state.cols;
+  while (grid.children.length < needed) {
+    const div = document.createElement('div');
+    div.className = 'plot';
+    div.innerHTML = `
+      <div class="plot-emoji"></div>
+      <div class="plot-label"></div>
+      <div class="plot-timer"></div>
+      <div class="plot-progress"><div class="plot-progress-bar" style="width:0%"></div></div>
+    `;
+    grid.appendChild(div);
+  }
+  while (grid.children.length > needed) grid.removeChild(grid.lastChild);
+
+  // Re-bind clicks (after potential re-creation)
+  Array.from(grid.children).forEach((el, i) => { el.onclick = () => clickPlot(i); });
+
+  document.getElementById('grid-size-badge').textContent = `${state.rows} × ${state.cols}`;
+  for (let i = 0; i < needed; i++) renderPlot(i);
+}
+
+function renderPlot(idx) {
+  const grid = document.getElementById('farm-grid');
+  const el = grid.children[idx];
+  if (!el) return;
+  const plot = state.plots[idx];
+  const emoji = el.querySelector('.plot-emoji');
+  const label = el.querySelector('.plot-label');
+  const timer = el.querySelector('.plot-timer');
+  const bar = el.querySelector('.plot-progress-bar');
+
+  // Build modifier badges
+  let mods = el.querySelector('.plot-mods');
+  if (!mods) {
+    mods = document.createElement('div');
+    mods.className = 'plot-mods';
+    el.insertBefore(mods, el.querySelector('.plot-progress'));
+  }
+
+  el.className = 'plot ' + plot.state;
+
+  if (plot.state === 'empty') {
+    emoji.textContent = '🟫';
+    label.textContent = 'Plant';
+    timer.textContent = '';
+    bar.style.width = '0%';
+    mods.textContent = '';
+  } else {
+    const crop = CROPS[plot.crop || 'wheat'];
+    const growMs = plot.watered ? crop.growMs * WATER_SPEEDUP : crop.growMs;
+
+    if (plot.state === 'planted') {
+      emoji.textContent = crop.seedling;
+      const elapsed = Date.now() - plot.plantedAt;
+      const pct = Math.min(100, (elapsed / growMs) * 100);
+      bar.style.width = pct + '%';
+      label.textContent = crop.name;
+      timer.textContent = '';
+    } else if (plot.state === 'ready') {
+      emoji.textContent = crop.emoji;
+      label.textContent = 'Harvest!';
+      timer.textContent = '';
+      bar.style.width = '100%';
+    }
+
+    const modIcons = [];
+    if (plot.watered) modIcons.push('💧');
+    if (plot.fertilized) modIcons.push('🌿');
+    mods.textContent = modIcons.join('');
+  }
+}
+
+function updateHeader() {
+  el('coin-display').textContent = state.coins;
+  const seeds = (state.wheatSeeds || 0) + (state.cornSeeds || 0) + (state.pumpkinSeeds || 0) + (state.truffleSeeds || 0);
+  el('seed-display').textContent = seeds;
+  // Barn pill
+  el('barn-display').textContent = `${totalBarnContents()}/${barnCap()}`;
+  // Gloves pill — only show when equipped
+  const gd = state.glovesDurability || 0;
+  el('gloves-pill').style.display = gd > 0 ? 'flex' : 'none';
+  el('gloves-display').textContent = gd;
+}
+
+function updateShopUI() {
+  const w  = state.wheat   || 0;
+  const c  = state.corn    || 0;
+  const pk = state.pumpkin || 0;
+  const tr = state.truffle || 0;
+  const barnUsed = totalBarnContents();
+  const cap = barnCap();
+  const cornUnlocked    = (state.lifetimeCoins || 0) >= CROPS.corn.unlockCoins;
+  const pumpkinUnlocked = (state.lifetimeCoins || 0) >= CROPS.pumpkin.unlockCoins;
+  const truffleUnlocked = (state.lifetimeCoins || 0) >= CROPS.truffle.unlockCoins;
+  const growingPlots = state.plots.filter(p => p.state === 'planted');
+  const totalStock = w + c + pk + tr;
+
+  // Sell all crops
+  el('sell-all-crops-btn').disabled = totalStock === 0;
+
+  // Wheat seeds
+  el('buy-wheat1-btn').disabled  = state.coins < CROPS.wheat.seedCost;
+  el('buy-wheat10-btn').disabled = state.coins < CROPS.wheat.seedCost * 10;
+  el('wheat-seed-count').textContent = `${state.wheatSeeds || 0} owned`;
+
+  // Corn seeds
+  el('corn-unlock-msg').style.display    = cornUnlocked ? 'none' : 'block';
+  el('corn-shop-actions').style.display  = cornUnlocked ? 'flex' : 'none';
+  el('buy-corn1-btn').disabled = state.coins < CROPS.corn.seedCost;
+  el('buy-corn5-btn').disabled = state.coins < CROPS.corn.seedCost * 5;
+  el('corn-seed-count').textContent = `${state.cornSeeds || 0} owned`;
+
+  // Pumpkin seeds
+  el('pumpkin-unlock-msg').style.display   = pumpkinUnlocked ? 'none' : 'block';
+  el('pumpkin-shop-actions').style.display = pumpkinUnlocked ? 'flex' : 'none';
+  el('buy-pumpkin1-btn').disabled = state.coins < CROPS.pumpkin.seedCost;
+  el('buy-pumpkin3-btn').disabled = state.coins < CROPS.pumpkin.seedCost * 3;
+  el('pumpkin-seed-count').textContent = `${state.pumpkinSeeds || 0} owned`;
+
+  // Truffle seeds
+  el('truffle-unlock-msg').style.display   = truffleUnlocked ? 'none' : 'block';
+  el('truffle-shop-actions').style.display = truffleUnlocked ? 'flex' : 'none';
+  el('buy-truffle1-btn').disabled = state.coins < CROPS.truffle.seedCost;
+  el('buy-truffle3-btn').disabled = state.coins < CROPS.truffle.seedCost * 3;
+  el('truffle-seed-count').textContent = `${state.truffleSeeds || 0} owned`;
+
+  // Water
+  el('buy-water1-btn').disabled = state.coins < WATER_COST;
+  el('buy-water5-btn').disabled = state.coins < WATER_COST * 5;
+  el('water-count').textContent = `${state.water || 0} owned`;
+  el('buy-hose-btn').disabled   = state.coins < WATER_HOSE_COST || growingPlots.filter(p => !p.watered).length === 0;
+
+  // Fertilizer
+  el('buy-fert1-btn').disabled = state.coins < FERT_COST;
+  el('buy-fert5-btn').disabled = state.coins < FERT_COST * 5;
+  el('fert-count').textContent = `${state.fertilizer || 0} owned`;
+  el('buy-bigfert-btn').disabled = state.coins < BIG_FERT_COST || growingPlots.filter(p => !p.fertilized).length === 0;
+
+  // Gloves
+  const gd = state.glovesDurability || 0;
+  el('buy-gloves-btn').disabled    = gd > 0 || state.coins < GLOVES_COST;
+  el('gloves-status').textContent  = gd > 0 ? `${gd}/${GLOVES_USES} uses left` : 'Not equipped';
+  el('gloves-status').style.color  = gd > 0 ? 'var(--accent2)' : 'var(--text3)';
+
+  // Sell individual crops
+  el('sell-wheat-all-btn').disabled   = w  === 0;
+  el('sell-wheat1-btn').disabled      = w  === 0;
+  el('wheat-barn-count').textContent  = `${w} in barn`;
+  el('sell-corn-all-btn').disabled    = c  === 0;
+  el('sell-corn1-btn').disabled       = c  === 0;
+  el('corn-barn-count').textContent   = `${c} in barn`;
+  el('sell-pumpkin-all-btn').disabled = pk === 0;
+  el('sell-pumpkin1-btn').disabled    = pk === 0;
+  el('pumpkin-barn-count').textContent = `${pk} in barn`;
+  el('sell-truffle-all-btn').disabled = tr === 0;
+  el('sell-truffle1-btn').disabled    = tr === 0;
+  el('truffle-barn-count').textContent = `${tr} in barn`;
+
+  // Barn
+  el('barn-cap-display').textContent = `${barnUsed}/${cap}`;
+  const nextLevel = (state.barnLevel || 0) + 1;
+  if (nextLevel > BARN_UPGRADES.length) {
+    el('barn-upgrade-btn').disabled = true;
+    el('barn-upgrade-btn').textContent = 'Max';
+    el('barn-upgrade-cost').textContent = 'Fully upgraded';
+  } else {
+    const upg = BARN_UPGRADES[nextLevel - 1];
+    el('barn-upgrade-btn').disabled = state.coins < upg.cost;
+    el('barn-upgrade-btn').textContent = 'Upgrade';
+    el('barn-upgrade-cost').textContent = `🪙${upg.cost} → ${upg.cap} cap`;
+  }
+
+  // Expand
+  const rCost = expandCost('row');
+  const cCost = expandCost('col');
+  el('row-cost').textContent = `🪙 ${rCost}`;
+  el('col-cost').textContent = `🪙 ${cCost}`;
+  el('row-btn').disabled = state.coins < rCost || state.rows >= MAX_ROWS;
+  el('col-btn').disabled = state.coins < cCost || state.cols >= MAX_COLS;
+  el('row-desc').textContent = state.rows >= MAX_ROWS ? 'Max rows reached' : `${state.rows} → ${state.rows+1} rows`;
+  el('col-desc').textContent = state.cols >= MAX_COLS ? 'Max cols reached' : `${state.cols} → ${state.cols+1} cols`;
+}
+
+// ── TICK ──────────────────────────────────────────────────
+function tick() {
+  let changed = false;
+  state.plots.forEach((plot, i) => {
+    if (plot.state === 'planted') {
+      const crop = CROPS[plot.crop || 'wheat'];
+      const growMs = plot.watered ? crop.growMs * WATER_SPEEDUP : crop.growMs;
+      const elapsed = Date.now() - plot.plantedAt;
+      if (elapsed >= growMs) {
+        plot.state = 'ready';
+        changed = true;
+        if (!notifiedPlots.has(i)) {
+          notifiedPlots.add(i);
+          if (settings.vibrate && navigator.vibrate) navigator.vibrate([50, 30, 50]);
+        }
+      }
+      renderPlot(i);
+    } else {
+      notifiedPlots.delete(i);
+    }
+  });
+  if (changed) {
+    saveState();
+    updateShopUI();
+  }
+}
+
+// ── MODAL / RESET ─────────────────────────────────────────
+function confirmReset() {
+  document.getElementById('reset-modal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('reset-modal').classList.remove('open');
+  document.getElementById('plot-modal').classList.remove('open');
+}
+function doReset() {
+  localStorage.removeItem('cozyfarm_state');
+  state = {
+    coins: 0, lifetimeCoins: 0,
+    wheatSeeds: 5, cornSeeds: 0, pumpkinSeeds: 0, truffleSeeds: 0,
+    water: 0, fertilizer: 0,
+    glovesDurability: 0,
+    wheat: 0, corn: 0, pumpkin: 0, truffle: 0,
+    barnLevel: 0,
+    rows: 2, cols: 2,
+    rowExpands: 0, colExpands: 0,
+    plots: [],
+  };
+  selectedCrop = 'wheat';
+  initPlots();
+  saveState();
+  renderGrid();
+  updateHeader();
+  updateShopUI();
+  updateFarmToolbar();
+  closeModal();
+  toast('🌱 Farm reset! Starting fresh.');
+}
+
+// ── TOAST ─────────────────────────────────────────────────
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ── UTILS ─────────────────────────────────────────────────
+function formatTime(secs) {
+  if (secs <= 0) return '0s';
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return m > 0 ? `${m}m${s > 0 ? s + 's' : ''}` : `${s}s`;
+}
+
+// ── INIT ──────────────────────────────────────────────────
+function init() {
+  loadSettings();
+  loadState();
+
+  // Migrate old saves
+  if (state.seeds !== undefined && state.wheatSeeds === undefined) {
+    state.wheatSeeds = state.seeds;
+    delete state.seeds;
+  }
+  if (!state.wheatSeeds)   state.wheatSeeds   = 5;
+  if (!state.cornSeeds)    state.cornSeeds    = 0;
+  if (!state.pumpkinSeeds) state.pumpkinSeeds = 0;
+  if (!state.truffleSeeds) state.truffleSeeds = 0;
+  if (!state.water)        state.water        = 0;
+  if (!state.fertilizer)   state.fertilizer   = 0;
+  if (!state.glovesDurability) state.glovesDurability = 0;
+  if (!state.wheat)   state.wheat   = 0;
+  if (!state.corn)    state.corn    = 0;
+  if (!state.pumpkin) state.pumpkin = 0;
+  if (!state.truffle) state.truffle = 0;
+  if (!state.barnLevel)     state.barnLevel     = 0;
+  if (!state.lifetimeCoins) state.lifetimeCoins = 0;
+  // Migrate old plot format
+  state.plots.forEach(p => {
+    if (!p.crop) p.crop = 'wheat';
+    if (p.watered === undefined) p.watered = false;
+    if (p.fertilized === undefined) p.fertilized = false;
+  });
+
+  applyTheme();
+
+  document.getElementById('setting-dark').checked = settings.dark;
+  document.getElementById('setting-vibrate').checked = settings.vibrate;
+
+  // Re-check plots that grew while away
+  state.plots.forEach(plot => {
+    if (plot.state === 'planted') {
+      const crop = CROPS[plot.crop || 'wheat'];
+      const growMs = plot.watered ? crop.growMs * WATER_SPEEDUP : crop.growMs;
+      if (Date.now() - plot.plantedAt >= growMs) plot.state = 'ready';
+    }
+  });
+
+  initPlots();
+  renderGrid();
+  updateHeader();
+  updateShopUI();
+  updateFarmToolbar();
+
+  const hint = document.getElementById('farm-hint');
+  if (hint) hint.textContent = 'Tap empty to plant · Tap growing to water/fertilize · Tap 🌾🌽 to harvest';
+
+  setInterval(tick, 1000);
+}
+
+init();
+</script>
+</body>
+</html>
