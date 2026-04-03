@@ -95,7 +95,7 @@ The **Town tab** unlocks once you've reached a full 6×6 farm grid and upgraded 
 | NPC | Personality |
 |-----|-------------|
 | 👴 Old Man Kalbi | Grumpy/Traditional |
-| 🐕 Mayor Kimchi | Shiba Inu / Ambitious |
+| 🐕 Mayor Kimchi | A literal Dog / Ambitious |
 | 👒 Lady Ellie | High Society / Elite |
 | 👫 Mason & Jason | Chaotic Children |
 | 🐱 Hunter Maru | Cat (w/ Crow) |
