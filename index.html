@@ -203,18 +203,19 @@
 
   .plot-emoji { font-size: clamp(28px, 8vw, 48px); line-height: 1; }
   .plot-label {
-    font-size: clamp(9px, 2.5vw, 12px);
-    font-weight: 700;
+    font-size: clamp(10px, 2.8vw, 13px);
+    font-weight: 800;
     color: var(--text3);
     margin-top: 4px;
-    font-family: 'Silkscreen', monospace;
+    font-family: 'Nunito', sans-serif;
   }
   .plot.ready .plot-label { color: var(--accent2); }
 
   .plot-timer {
-    font-size: clamp(8px, 2vw, 11px);
+    font-size: clamp(9px, 2.2vw, 12px);
     color: var(--text3);
-    font-family: 'Silkscreen', monospace;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
     margin-top: 2px;
   }
 
@@ -236,10 +237,11 @@
 
   /* ── SHOP TAB ── */
   .section-title {
-    font-family: 'Silkscreen', monospace;
-    font-size: 11px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 800;
     color: var(--text3);
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     margin: 20px 0 10px;
   }
@@ -302,10 +304,10 @@
   .btn.sm { padding: 4px 10px; font-size: 12px; }
 
   .cost-tag {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--gold);
-    font-weight: 700;
-    font-family: 'Silkscreen', monospace;
+    font-weight: 800;
+    font-family: 'Nunito', sans-serif;
     display: inline;
   }
 
@@ -479,7 +481,7 @@
     background: var(--card2);
   }
   .crop-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .crop-btn .crop-stock { font-size: 11px; color: var(--text3); font-family: 'Silkscreen', monospace; }
+  .crop-btn .crop-stock { font-size: 12px; color: var(--text3); font-family: 'Nunito', sans-serif; font-weight: 700; }
 
   .grid-size-badge {
     display: inline-block;
@@ -487,11 +489,97 @@
     border: 1.5px solid var(--border);
     border-radius: 10px;
     padding: 3px 10px;
-    font-family: 'Silkscreen', monospace;
-    font-size: 11px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
     color: var(--text2);
     margin-bottom: 8px;
   }
+
+  /* ── WEATHER BANNER ── */
+  .weather-banner {
+    border-radius: 14px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1.5px solid var(--border);
+    background: var(--card);
+    transition: background 0.5s, border-color 0.5s;
+    position: relative;
+    overflow: hidden;
+  }
+  .weather-banner.sunny    { background: color-mix(in srgb, #f4c842 12%, var(--card)); border-color: #c8982a; }
+  .weather-banner.rain     { background: color-mix(in srgb, #5599dd 15%, var(--card)); border-color: #4477bb; }
+  .weather-banner.overcast { background: color-mix(in srgb, #7788aa 15%, var(--card)); border-color: #556677; }
+  .weather-banner.thunder  { background: color-mix(in srgb, #8855cc 15%, var(--card)); border-color: #6633aa; }
+  .weather-banner.flood    { background: color-mix(in srgb, #3399cc 18%, var(--card)); border-color: #1166aa; }
+  .weather-icon { font-size: 28px; flex-shrink: 0; }
+  .weather-info { flex: 1; min-width: 0; }
+  .weather-name { font-weight: 800; font-size: 14px; }
+  .weather-desc { font-size: 11px; color: var(--text2); margin-top: 1px; }
+  .weather-timer {
+    font-family: 'Silkscreen', monospace;
+    font-size: 11px;
+    color: var(--text3);
+    flex-shrink: 0;
+  }
+
+  /* ── LOG TAB ── */
+  .achievement-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .achievement-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    text-align: center;
+    transition: border-color 0.3s, background 0.3s;
+    position: relative;
+  }
+  .achievement-card.unlocked {
+    border-color: var(--gold);
+    background: color-mix(in srgb, var(--gold) 8%, var(--card));
+  }
+  .achievement-card.locked { opacity: 0.45; filter: grayscale(0.6); }
+  .achievement-icon { font-size: 28px; line-height: 1; }
+  .achievement-name { font-size: 12px; font-weight: 800; }
+  .achievement-desc { font-size: 10px; color: var(--text2); line-height: 1.4; }
+  .achievement-badge {
+    position: absolute;
+    top: 6px; right: 8px;
+    font-size: 10px;
+    color: var(--gold);
+    font-family: 'Silkscreen', monospace;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .stat-card-label { font-size: 11px; color: var(--text2); font-weight: 700; }
+  .stat-card-val   { font-size: 20px; font-weight: 800; font-family: 'Silkscreen', monospace; color: var(--accent2); }
+  .stat-card-icon  { font-size: 16px; }
 </style>
 </head>
 <body>
@@ -502,6 +590,8 @@
     <div class="stat-pill">🪙 <span class="val" id="coin-display">0</span></div>
     <div class="stat-pill seeds">🌱 <span class="val" id="seed-display">5</span></div>
     <div class="stat-pill" id="barn-pill">🏚️ <span class="val" id="barn-display">0/20</span></div>
+    <div class="stat-pill" id="water-pill" style="display:none">💧 <span class="val" id="header-water-display">0</span></div>
+    <div class="stat-pill" id="fert-pill" style="display:none">🌿 <span class="val" id="header-fert-display">0</span></div>
     <div class="stat-pill" id="gloves-pill" style="display:none">🧤 <span class="val" id="gloves-display">0</span></div>
   </div>
 </header>
@@ -509,6 +599,15 @@
 <main>
   <!-- FARM -->
   <div id="tab-farm" class="tab-panel active">
+    <!-- Weather banner -->
+    <div class="weather-banner" id="weather-banner">
+      <div class="weather-icon" id="weather-icon">☀️</div>
+      <div class="weather-info">
+        <div class="weather-name" id="weather-name">Clear</div>
+        <div class="weather-desc" id="weather-desc">No special effects</div>
+      </div>
+      <div class="weather-timer" id="weather-timer">—</div>
+    </div>
     <!-- Crop selector -->
     <div class="farm-toolbar" id="farm-toolbar">
       <button class="crop-btn selected" id="crop-btn-wheat" onclick="selectCrop('wheat')">
@@ -529,6 +628,11 @@
     </div>
     <div class="farm-grid" id="farm-grid"></div>
     <p class="empty-hint" id="farm-hint"></p>
+    <div id="beg-zone" style="display:none;text-align:center;margin-top:16px">
+      <p style="font-size:12px;color:var(--text3);margin-bottom:8px">You have no seeds or coins…</p>
+      <button class="btn" id="beg-btn" onclick="begForSeeds()" style="background:var(--card2);color:var(--text2);border:1.5px solid var(--border)">🙏 Beg for Seeds</button>
+      <p id="beg-progress" style="font-size:11px;color:var(--text3);margin-top:6px"></p>
+    </div>
   </div>
 
   <!-- SHOP -->
@@ -560,7 +664,7 @@
       </div>
     </div>
 
-    <div class="shop-card">
+    <div id="sell-corn-card" class="shop-card">
       <div class="shop-icon">🌽</div>
       <div class="shop-info">
         <div class="shop-name">Sell Corn</div>
@@ -573,7 +677,7 @@
       </div>
     </div>
 
-    <div class="shop-card">
+    <div id="sell-pumpkin-card" class="shop-card">
       <div class="shop-icon">🎃</div>
       <div class="shop-info">
         <div class="shop-name">Sell Pumpkin</div>
@@ -586,7 +690,7 @@
       </div>
     </div>
 
-    <div class="shop-card">
+    <div id="sell-truffle-card" class="shop-card">
       <div class="shop-icon">🍄</div>
       <div class="shop-info">
         <div class="shop-name">Sell Truffle</div>
@@ -614,7 +718,7 @@
       </div>
     </div>
 
-    <div class="shop-card">
+    <div id="corn-shop-card" class="shop-card" style="display:none">
       <div class="shop-icon seed-icon">🌽<span class="seed-badge">🌱</span></div>
       <div class="shop-info">
         <div class="shop-name">Corn Seeds</div>
@@ -628,7 +732,7 @@
       </div>
     </div>
 
-    <div class="shop-card">
+    <div id="pumpkin-shop-card" class="shop-card" style="display:none">
       <div class="shop-icon seed-icon">🎃<span class="seed-badge">🌱</span></div>
       <div class="shop-info">
         <div class="shop-name">Pumpkin Seeds</div>
@@ -642,7 +746,7 @@
       </div>
     </div>
 
-    <div class="shop-card">
+    <div id="truffle-shop-card" class="shop-card" style="display:none">
       <div class="shop-icon seed-icon">🍄<span class="seed-badge">🌱</span></div>
       <div class="shop-info">
         <div class="shop-name">Truffle Seeds</div>
@@ -656,9 +760,9 @@
       </div>
     </div>
 
-    <div class="section-title">🧪 Supplies</div>
+    <div class="section-title" id="supplies-section-title" style="display:none">🧪 Supplies</div>
 
-    <div class="shop-card">
+    <div id="water-shop-card" class="shop-card" style="display:none">
       <div class="shop-icon">💧</div>
       <div class="shop-info">
         <div class="shop-name">Water</div>
@@ -671,18 +775,18 @@
       </div>
     </div>
 
-    <div class="shop-card">
+    <div id="hose-shop-card" class="shop-card" style="display:none">
       <div class="shop-icon">🚿</div>
       <div class="shop-info">
         <div class="shop-name">Water Hose</div>
         <div class="shop-desc">Waters all growing plots instantly · 35% faster each</div>
       </div>
       <div class="shop-actions">
-        <button class="btn sm" id="buy-hose-btn" onclick="buyWaterHose()">Use <span class="cost-tag">🪙130</span></button>
+        <button class="btn sm" id="buy-hose-btn" onclick="buyWaterHose()">Use <span class="cost-tag">🪙200</span></button>
       </div>
     </div>
 
-    <div class="shop-card">
+    <div id="fert-shop-card" class="shop-card" style="display:none">
       <div class="shop-icon">🌿</div>
       <div class="shop-info">
         <div class="shop-name">Fertilizer</div>
@@ -695,18 +799,18 @@
       </div>
     </div>
 
-    <div class="shop-card">
+    <div id="bigfert-shop-card" class="shop-card" style="display:none">
       <div class="shop-icon">🧺</div>
       <div class="shop-info">
         <div class="shop-name">Big Fertilizer</div>
         <div class="shop-desc">Fertilizes all growing plots instantly · +2 yield each</div>
       </div>
       <div class="shop-actions">
-        <button class="btn sm" id="buy-bigfert-btn" onclick="buyBigFertilizer()">Use <span class="cost-tag">🪙160</span></button>
+        <button class="btn sm" id="buy-bigfert-btn" onclick="buyBigFertilizer()">Use <span class="cost-tag">🪙280</span></button>
       </div>
     </div>
 
-    <div class="shop-card">
+    <div id="gloves-shop-card" class="shop-card" style="display:none">
       <div class="shop-icon">🧤</div>
       <div class="shop-info">
         <div class="shop-name">Gloves</div>
@@ -750,6 +854,24 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- LOG -->
+  <div id="tab-log" class="tab-panel">
+    <div class="section-title">🏆 Achievements <span id="achievement-progress" style="font-size:10px;color:var(--text3);margin-left:4px"></span></div>
+    <div class="achievement-grid" id="achievement-grid">
+      <!-- populated by JS -->
+    </div>
+
+    <div class="section-title">📊 Stats</div>
+    <div class="stats-grid" id="stats-grid">
+      <!-- populated by JS -->
+    </div>
+
+    <div class="section-title">🌦️ Weather History</div>
+    <div id="weather-history-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+      <!-- populated by JS -->
+    </div>
   </div>
 
   <!-- SETTINGS -->
@@ -805,6 +927,9 @@
   <button class="tab-btn" data-tab="shop" onclick="switchTab('shop', this)">
     <span class="tab-icon">🏪</span>Shop
   </button>
+  <button class="tab-btn" data-tab="log" onclick="switchTab('log', this)">
+    <span class="tab-icon">📖</span>Log
+  </button>
   <button class="tab-btn" data-tab="settings" onclick="switchTab('settings', this)">
     <span class="tab-icon">⚙️</span>Settings
   </button>
@@ -837,7 +962,46 @@
 </div>
 
 <script>
-// ── CONSTANTS ─────────────────────────────────────────────
+// ── WEATHER ───────────────────────────────────────────────
+const WEATHER_TYPES = {
+  clear:    { id:'clear',    icon:'🌤️',  name:'Clear',        desc:'No special effects',                   cls:'',        weight:35 },
+  sunny:    { id:'sunny',    icon:'☀️',   name:'Sunny',        desc:'Crops grow 20% faster',                cls:'sunny',   weight:25 },
+  overcast: { id:'overcast', icon:'☁️',   name:'Overcast',     desc:'Crops grow 20% slower',                cls:'overcast',weight:20 },
+  rain:     { id:'rain',     icon:'🌧️',  name:'Rain',         desc:'All plots watered for free!',          cls:'rain',    weight:12 },
+  thunder:  { id:'thunder',  icon:'⛈️',  name:'Thunderstorm', desc:'1–5 crops may be zapped!',             cls:'thunder', weight:6  },
+  flood:    { id:'flood',    icon:'🌊',   name:'Flood',        desc:'One row of crops destroyed!',          cls:'flood',   weight:2  },
+};
+const WEATHER_DURATION_MS = 60 * 60 * 1000; // 1 hour
+const SUNNY_SPEEDUP    = 0.80; // 0.80× growMs = 20% faster
+const OVERCAST_SLOWDOWN = 1.20; // 1.20× growMs = 20% slower
+
+function pickWeather() {
+  const pool = [];
+  Object.values(WEATHER_TYPES).forEach(w => { for (let i=0;i<w.weight;i++) pool.push(w.id); });
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// ── ACHIEVEMENTS ──────────────────────────────────────────
+const ACHIEVEMENTS = [
+  { id:'first_harvest',   icon:'🌾', name:'First Harvest',    desc:'Harvest your first crop',            check: s => (s.stats.totalHarvests||0) >= 1 },
+  { id:'harvest_10',      icon:'🧺', name:'Busy Hands',       desc:'Harvest 10 crops total',             check: s => (s.stats.totalHarvests||0) >= 10 },
+  { id:'harvest_100',     icon:'🏆', name:'Century Farmer',   desc:'Harvest 100 crops total',            check: s => (s.stats.totalHarvests||0) >= 100 },
+  { id:'earn_100',        icon:'🪙', name:'Pocket Change',    desc:'Earn 100 coins lifetime',            check: s => (s.lifetimeCoins||0) >= 100 },
+  { id:'earn_1000',       icon:'💰', name:'Golden Harvest',   desc:'Earn 1,000 coins lifetime',          check: s => (s.lifetimeCoins||0) >= 1000 },
+  { id:'earn_10000',      icon:'🤑', name:'Truffle Tycoon',   desc:'Earn 10,000 coins lifetime',         check: s => (s.lifetimeCoins||0) >= 10000 },
+  { id:'survive_thunder', icon:'⛈️', name:'Storm Survivor',   desc:'Survive a thunderstorm',             check: s => (s.stats.thunderSurvived||0) >= 1 },
+  { id:'survive_flood',   icon:'🌊', name:'Flood Survivor',   desc:'Survive a flood',                    check: s => (s.stats.floodSurvived||0) >= 1 },
+  { id:'rain_watered',    icon:'🌧️', name:'Free Water',       desc:'Have plots watered by rain',         check: s => (s.stats.rainWateredPlots||0) >= 1 },
+  { id:'full_grid',       icon:'🏡', name:'Full House',       desc:'Fill every plot at once',            check: s => s.plots.length > 0 && s.plots.every(p=>p.state!=='empty') },
+  { id:'gloves_uses',     icon:'🧤', name:'Green Thumb',      desc:'Use gloves 20 times',                check: s => (s.stats.glovesUses||0) >= 20 },
+  { id:'truffle_harvest', icon:'🍄', name:'Truffle Hunter',   desc:'Harvest your first Truffle',         check: s => (s.stats.truffleHarvests||0) >= 1 },
+  { id:'expand_max',      icon:'🗺️', name:'Land Baron',       desc:'Reach a 4×4 farm or larger',        check: s => s.rows >= 4 && s.cols >= 4 },
+  { id:'lost_to_weather', icon:'💀', name:'Nature\'s Wrath',  desc:'Lose 5+ crops to weather',           check: s => (s.stats.cropsLostToWeather||0) >= 5 },
+  { id:'sell_10_times',   icon:'🏪', name:'Market Regular',   desc:'Sell crops 10 times',                check: s => (s.stats.sellActions||0) >= 10 },
+  { id:'watered_20',      icon:'💧', name:'Diligent Farmer',  desc:'Water 20 individual plots',          check: s => (s.stats.totalWatered||0) >= 20 },
+];
+
+
 const CROPS = {
   wheat: {
     emoji: '🌾', seedling: '🌱', name: 'Wheat',
@@ -865,10 +1029,10 @@ const CROPS = {
 };
 
 const WATER_COST      = 6;
-const WATER_HOSE_COST = 130;  // waters whole grid
+const WATER_HOSE_COST = 200;  // waters whole grid — unlocks at max plots
 const WATER_SPEEDUP   = 0.65;
 const FERT_COST       = 8;
-const BIG_FERT_COST   = 160;  // fertilizes whole grid
+const BIG_FERT_COST   = 280;  // fertilizes whole grid — unlocks at max plots
 const FERT_YIELD      = 2;
 const GLOVES_COST     = 80;
 const GLOVES_USES     = 20;
@@ -901,6 +1065,28 @@ let state = {
   rowExpands: 0, colExpands: 0,
   plots: [],
   // plots: { state, crop, plantedAt, watered, fertilized }
+  // weather
+  weather: { current: 'clear', changedAt: Date.now() },
+  // achievements
+  unlockedAchievements: [],
+  // stats
+  stats: {
+    totalHarvests: 0,
+    wheatHarvests: 0,
+    totalWatered: 0,
+    totalFertilized: 0,
+    sellActions: 0,
+    cropsLostToWeather: 0,
+    rainWateredPlots: 0,
+    thunderSurvived: 0,
+    floodSurvived: 0,
+    glovesUses: 0,
+    truffleHarvests: 0,
+    weatherCounts: {},
+    everBoughtWater: false,
+    everBoughtFert: false,
+  },
+  begTaps: 0,
 };
 
 let notifiedPlots = new Set();
@@ -949,6 +1135,7 @@ function switchTab(name, btn) {
   document.getElementById('tab-' + name).classList.add('active');
   btn.classList.add('active');
   if (name === 'shop') updateShopUI();
+  if (name === 'log')  renderLogTab();
 }
 
 // ── PLOT LOGIC ────────────────────────────────────────────
@@ -1010,12 +1197,14 @@ function showPlotOptions(idx) {
   const plot = state.plots[idx];
   const crop = CROPS[plot.crop];
   const elapsed = Date.now() - plot.plantedAt;
-  const growMs = plot.watered ? crop.growMs * WATER_SPEEDUP : crop.growMs;
+  const weatherMult = currentWeatherMultiplier();
+  const baseGrowMs = plot.watered ? crop.growMs * WATER_SPEEDUP : crop.growMs;
+  const growMs = baseGrowMs * weatherMult;
   const remaining = Math.max(0, Math.ceil((growMs - elapsed) / 1000));
 
   let msg = `⏳ ${formatTime(remaining)} left`;
   const actions = [];
-  if (!plot.watered && state.water > 0) actions.push(`💧 Water (${formatTime(Math.ceil(growMs * (1 - WATER_SPEEDUP) / 1000))} faster)`);
+  if (!plot.watered && state.water > 0) actions.push(`💧 Water (${formatTime(Math.ceil(crop.growMs * (1 - WATER_SPEEDUP) / 1000))} faster)`);
   if (!plot.fertilized && state.fertilizer > 0) actions.push(`🌿 Fertilize (+${FERT_YIELD} yield)`);
   if (actions.length === 0) {
     toast(msg);
@@ -1031,6 +1220,7 @@ function applyWater(idx) {
   if (state.water < 1) { toast('No water! Buy some in the Shop.'); closeModal(); return; }
   state.water--;
   plot.watered = true;
+  state.stats.totalWatered = (state.stats.totalWatered||0) + 1;
   saveState();
   renderPlot(idx);
   updateHeader();
@@ -1045,6 +1235,7 @@ function applyFertilizer(idx) {
   if (state.fertilizer < 1) { toast('No fertilizer! Buy some in the Shop.'); closeModal(); return; }
   state.fertilizer--;
   plot.fertilized = true;
+  state.stats.totalFertilized = (state.stats.totalFertilized||0) + 1;
   saveState();
   renderPlot(idx);
   updateHeader();
@@ -1081,6 +1272,7 @@ function harvestPlot(idx) {
       seedReturned = true;
     }
     state.glovesDurability--;
+    state.stats.glovesUses = (state.stats.glovesUses||0) + 1;
     if (state.glovesDurability === 0) toast('🧤 Gloves worn out! Buy new ones.');
   }
 
@@ -1091,6 +1283,11 @@ function harvestPlot(idx) {
   plot.fertilized = false;
   notifiedPlots.delete(idx);
 
+  // Stats
+  state.stats.totalHarvests = (state.stats.totalHarvests||0) + 1;
+  if (cropKey === 'wheat')   state.stats.wheatHarvests  = (state.stats.wheatHarvests||0) + 1;
+  if (cropKey === 'truffle') state.stats.truffleHarvests = (state.stats.truffleHarvests||0) + 1;
+
   saveState();
   renderPlot(idx);
   updateHeader();
@@ -1099,6 +1296,9 @@ function harvestPlot(idx) {
 
   const extra = seedReturned ? ' 🌱 Seed returned!' : '';
   toast(`${crop.emoji} Harvested ${yieldAmt} ${crop.name}!${extra}`);
+  updateHint();
+  updateBegZone();
+  checkAchievements();
 }
 
 function sellAllCrops() {
@@ -1114,12 +1314,15 @@ function sellAllCrops() {
   state.coins += earned;
   const prevLifetime = state.lifetimeCoins || 0;
   state.lifetimeCoins = prevLifetime + earned;
+  state.stats.sellActions = (state.stats.sellActions||0) + 1;
   checkUnlocks(prevLifetime, state.lifetimeCoins);
   saveState();
   updateHeader();
   updateShopUI();
   updateFarmToolbar();
   toast(`🪙 Sold everything for ${earned} coins!`);
+  checkAchievements();
+  updateBegZone();
 }
 
 function checkUnlocks(prev, next) {
@@ -1139,6 +1342,7 @@ function sellCrop(cropKey, amount) {
   state.coins += earned;
   const prevLifetime = state.lifetimeCoins || 0;
   state.lifetimeCoins = prevLifetime + earned;
+  state.stats.sellActions = (state.stats.sellActions||0) + 1;
   checkUnlocks(prevLifetime, state.lifetimeCoins);
   saveState();
   updateHeader();
@@ -1146,6 +1350,7 @@ function sellCrop(cropKey, amount) {
   updateFarmToolbar();
   const label = qty === 1 ? `1 ${CROPS[cropKey].name}` : `${qty} ${CROPS[cropKey].name}`;
   toast(`🪙 Sold ${label} for ${earned} coins!`);
+  checkAchievements();
 }
 
 function buySeeds(cropKey, n) {
@@ -1157,6 +1362,7 @@ function buySeeds(cropKey, n) {
   saveState();
   updateHeader();
   updateShopUI();
+  updateFarmToolbar();
   toast(`${CROPS[cropKey].seedling} Bought ${n} ${CROPS[cropKey].name} seed${n>1?'s':''}!`);
 }
 
@@ -1165,9 +1371,11 @@ function buyWater(n) {
   if (state.coins < cost) { toast(`Need ${cost}🪙!`); return; }
   state.coins -= cost;
   state.water = (state.water || 0) + n;
+  state.stats.everBoughtWater = true;
   saveState();
   updateHeader();
   updateShopUI();
+  updateHint();
   toast(`💧 Bought ${n} water!`);
 }
 
@@ -1176,9 +1384,11 @@ function buyFertilizer(n) {
   if (state.coins < cost) { toast(`Need ${cost}🪙!`); return; }
   state.coins -= cost;
   state.fertilizer = (state.fertilizer || 0) + n;
+  state.stats.everBoughtFert = true;
   saveState();
   updateHeader();
   updateShopUI();
+  updateHint();
   toast(`🌿 Bought ${n} fertilizer!`);
 }
 
@@ -1209,6 +1419,7 @@ function buyBigFertilizer() {
 }
 
 function buyGloves() {
+  if ((state.stats.wheatHarvests || 0) < 20) { toast('🧤 Harvest 20 wheat first to unlock Gloves!'); return; }
   if (state.glovesDurability > 0) { toast('Gloves still have durability!'); return; }
   if (state.coins < GLOVES_COST) { toast(`Need ${GLOVES_COST}🪙!`); return; }
   state.coins -= GLOVES_COST;
@@ -1232,7 +1443,50 @@ function upgradeBarn() {
   toast(`🏚️ Barn upgraded! Now holds ${upgrade.cap} crops.`);
 }
 
-// ── EXPAND ────────────────────────────────────────────────
+// ── BEG SYSTEM ────────────────────────────────────────────
+function begForSeeds() {
+  state.begTaps = (state.begTaps || 0) + 1;
+  const remaining = 10 - state.begTaps;
+  if (state.begTaps >= 10) {
+    state.wheatSeeds = (state.wheatSeeds || 0) + 1;
+    state.begTaps = 0;
+    saveState();
+    updateHeader();
+    updateFarmToolbar();
+    updateBegZone();
+    toast('🙏 A kind stranger gave you 1 wheat seed!');
+  } else {
+    saveState();
+    const prog = document.getElementById('beg-progress');
+    if (prog) prog.textContent = `${state.begTaps}/10 taps… keep going`;
+  }
+}
+
+function updateBegZone() {
+  const totalSeeds = (state.wheatSeeds||0)+(state.cornSeeds||0)+(state.pumpkinSeeds||0)+(state.truffleSeeds||0);
+  const broke = totalSeeds === 0 && state.coins === 0;
+  const zone = document.getElementById('beg-zone');
+  if (!zone) return;
+  zone.style.display = broke ? 'block' : 'none';
+  if (!broke) {
+    state.begTaps = 0;
+    const prog = document.getElementById('beg-progress');
+    if (prog) prog.textContent = '';
+  }
+}
+
+// ── DYNAMIC HINT ──────────────────────────────────────────
+function updateHint() {
+  const hint = document.getElementById('farm-hint');
+  if (!hint) return;
+  const hasWater = state.stats.everBoughtWater || (state.water||0) > 0;
+  const hasFert  = state.stats.everBoughtFert  || (state.fertilizer||0) > 0;
+  if (hasWater || hasFert) {
+    hint.textContent = 'Tap empty to plant · Tap growing to water/fertilize · Tap ready to harvest';
+  } else {
+    hint.textContent = 'Tap an empty plot to plant · Wait for it to grow · Tap to harvest';
+  }
+}
 function expandCost(type) {
   const n = type === 'row' ? state.rowExpands : state.colExpands;
   return Math.round(EXPAND_BASE * Math.pow(EXPAND_MULT, n));
@@ -1252,6 +1506,7 @@ function expandGrid(type) {
   updateHeader();
   updateShopUI();
   toast(type === 'row' ? '🏡 New row added!' : '🏡 New column added!');
+  checkAchievements();
 }
 
 // ── FARM TOOLBAR ──────────────────────────────────────────
@@ -1370,8 +1625,10 @@ function renderPlot(idx) {
 
     if (plot.state === 'planted') {
       emoji.textContent = crop.seedling;
+      const weatherMult = currentWeatherMultiplier();
       const elapsed = Date.now() - plot.plantedAt;
-      const pct = Math.min(100, (elapsed / growMs) * 100);
+      const effectiveGrowMs = growMs * weatherMult;
+      const pct = Math.min(100, (elapsed / effectiveGrowMs) * 100);
       bar.style.width = pct + '%';
       label.textContent = crop.name;
       timer.textContent = '';
@@ -1395,6 +1652,14 @@ function updateHeader() {
   el('seed-display').textContent = seeds;
   // Barn pill
   el('barn-display').textContent = `${totalBarnContents()}/${barnCap()}`;
+  // Water pill — show once player has ever bought water or currently has some
+  const showWater = state.stats.everBoughtWater || (state.water||0) > 0;
+  el('water-pill').style.display = showWater ? 'flex' : 'none';
+  el('header-water-display').textContent = state.water || 0;
+  // Fert pill — show once player has ever bought fert or currently has some
+  const showFert = state.stats.everBoughtFert || (state.fertilizer||0) > 0;
+  el('fert-pill').style.display = showFert ? 'flex' : 'none';
+  el('header-fert-display').textContent = state.fertilizer || 0;
   // Gloves pill — only show when equipped
   const gd = state.glovesDurability || 0;
   el('gloves-pill').style.display = gd > 0 ? 'flex' : 'none';
@@ -1413,67 +1678,91 @@ function updateShopUI() {
   const truffleUnlocked = (state.lifetimeCoins || 0) >= CROPS.truffle.unlockCoins;
   const growingPlots = state.plots.filter(p => p.state === 'planted');
   const totalStock = w + c + pk + tr;
+  const maxGridReached = state.rows >= MAX_ROWS && state.cols >= MAX_COLS;
+  const wheatHarvests = state.stats.wheatHarvests || 0;
+  const suppliesUnlocked = state.stats.everBoughtWater || state.stats.everBoughtFert || (state.water||0) > 0 || (state.fertilizer||0) > 0 || (state.lifetimeCoins||0) >= 50;
 
   // Sell all crops
   el('sell-all-crops-btn').disabled = totalStock === 0;
 
-  // Wheat seeds
+  // Wheat seeds (always visible)
   el('buy-wheat1-btn').disabled  = state.coins < CROPS.wheat.seedCost;
   el('buy-wheat10-btn').disabled = state.coins < CROPS.wheat.seedCost * 10;
   el('wheat-seed-count').textContent = `${state.wheatSeeds || 0} owned`;
 
-  // Corn seeds
-  el('corn-unlock-msg').style.display    = cornUnlocked ? 'none' : 'block';
-  el('corn-shop-actions').style.display  = cornUnlocked ? 'flex' : 'none';
+  // Corn seeds — hide card entirely until unlocked
+  el('corn-shop-card').style.display    = cornUnlocked ? 'flex' : 'none';
+  el('corn-unlock-msg').style.display   = 'none'; // no longer needed, card is hidden
+  el('corn-shop-actions').style.display = 'flex';
   el('buy-corn1-btn').disabled = state.coins < CROPS.corn.seedCost;
   el('buy-corn5-btn').disabled = state.coins < CROPS.corn.seedCost * 5;
   el('corn-seed-count').textContent = `${state.cornSeeds || 0} owned`;
 
-  // Pumpkin seeds
-  el('pumpkin-unlock-msg').style.display   = pumpkinUnlocked ? 'none' : 'block';
-  el('pumpkin-shop-actions').style.display = pumpkinUnlocked ? 'flex' : 'none';
+  // Pumpkin seeds — hide card entirely until unlocked
+  el('pumpkin-shop-card').style.display    = pumpkinUnlocked ? 'flex' : 'none';
+  el('pumpkin-unlock-msg').style.display   = 'none';
+  el('pumpkin-shop-actions').style.display = 'flex';
   el('buy-pumpkin1-btn').disabled = state.coins < CROPS.pumpkin.seedCost;
   el('buy-pumpkin3-btn').disabled = state.coins < CROPS.pumpkin.seedCost * 3;
   el('pumpkin-seed-count').textContent = `${state.pumpkinSeeds || 0} owned`;
 
-  // Truffle seeds
-  el('truffle-unlock-msg').style.display   = truffleUnlocked ? 'none' : 'block';
-  el('truffle-shop-actions').style.display = truffleUnlocked ? 'flex' : 'none';
+  // Truffle seeds — hide card entirely until unlocked
+  el('truffle-shop-card').style.display    = truffleUnlocked ? 'flex' : 'none';
+  el('truffle-unlock-msg').style.display   = 'none';
+  el('truffle-shop-actions').style.display = 'flex';
   el('buy-truffle1-btn').disabled = state.coins < CROPS.truffle.seedCost;
   el('buy-truffle3-btn').disabled = state.coins < CROPS.truffle.seedCost * 3;
   el('truffle-seed-count').textContent = `${state.truffleSeeds || 0} owned`;
+
+  // Supplies section — reveal once player can afford water (50 coins lifetime)
+  el('supplies-section-title').style.display = suppliesUnlocked ? 'block' : 'none';
+  el('water-shop-card').style.display  = suppliesUnlocked ? 'flex' : 'none';
+  el('fert-shop-card').style.display   = suppliesUnlocked ? 'flex' : 'none';
 
   // Water
   el('buy-water1-btn').disabled = state.coins < WATER_COST;
   el('buy-water5-btn').disabled = state.coins < WATER_COST * 5;
   el('water-count').textContent = `${state.water || 0} owned`;
-  el('buy-hose-btn').disabled   = state.coins < WATER_HOSE_COST || growingPlots.filter(p => !p.watered).length === 0;
+
+  // Hose — only at max grid size
+  el('hose-shop-card').style.display = maxGridReached ? 'flex' : 'none';
+  el('buy-hose-btn').disabled = state.coins < WATER_HOSE_COST || growingPlots.filter(p => !p.watered).length === 0;
 
   // Fertilizer
   el('buy-fert1-btn').disabled = state.coins < FERT_COST;
   el('buy-fert5-btn').disabled = state.coins < FERT_COST * 5;
   el('fert-count').textContent = `${state.fertilizer || 0} owned`;
+
+  // Big Fertilizer — only at max grid size
+  el('bigfert-shop-card').style.display = maxGridReached ? 'flex' : 'none';
   el('buy-bigfert-btn').disabled = state.coins < BIG_FERT_COST || growingPlots.filter(p => !p.fertilized).length === 0;
 
-  // Gloves
+  // Gloves — unlock after 20 wheat harvested
+  el('gloves-shop-card').style.display = wheatHarvests >= 20 ? 'flex' : 'none';
   const gd = state.glovesDurability || 0;
   el('buy-gloves-btn').disabled    = gd > 0 || state.coins < GLOVES_COST;
   el('gloves-status').textContent  = gd > 0 ? `${gd}/${GLOVES_USES} uses left` : 'Not equipped';
   el('gloves-status').style.color  = gd > 0 ? 'var(--accent2)' : 'var(--text3)';
 
-  // Sell individual crops
+  // Sell individual crops — hide cards for undiscovered crops
   el('sell-wheat-all-btn').disabled   = w  === 0;
   el('sell-wheat1-btn').disabled      = w  === 0;
   el('wheat-barn-count').textContent  = `${w} in barn`;
-  el('sell-corn-all-btn').disabled    = c  === 0;
-  el('sell-corn1-btn').disabled       = c  === 0;
-  el('corn-barn-count').textContent   = `${c} in barn`;
-  el('sell-pumpkin-all-btn').disabled = pk === 0;
-  el('sell-pumpkin1-btn').disabled    = pk === 0;
-  el('pumpkin-barn-count').textContent = `${pk} in barn`;
-  el('sell-truffle-all-btn').disabled = tr === 0;
-  el('sell-truffle1-btn').disabled    = tr === 0;
-  el('truffle-barn-count').textContent = `${tr} in barn`;
+
+  el('sell-corn-card').style.display   = cornUnlocked ? 'flex' : 'none';
+  el('sell-corn-all-btn').disabled     = c  === 0;
+  el('sell-corn1-btn').disabled        = c  === 0;
+  el('corn-barn-count').textContent    = `${c} in barn`;
+
+  el('sell-pumpkin-card').style.display   = pumpkinUnlocked ? 'flex' : 'none';
+  el('sell-pumpkin-all-btn').disabled     = pk === 0;
+  el('sell-pumpkin1-btn').disabled        = pk === 0;
+  el('pumpkin-barn-count').textContent    = `${pk} in barn`;
+
+  el('sell-truffle-card').style.display   = truffleUnlocked ? 'flex' : 'none';
+  el('sell-truffle-all-btn').disabled     = tr === 0;
+  el('sell-truffle1-btn').disabled        = tr === 0;
+  el('truffle-barn-count').textContent    = `${tr} in barn`;
 
   // Barn
   el('barn-cap-display').textContent = `${barnUsed}/${cap}`;
@@ -1500,13 +1789,142 @@ function updateShopUI() {
   el('col-desc').textContent = state.cols >= MAX_COLS ? 'Max cols reached' : `${state.cols} → ${state.cols+1} cols`;
 }
 
+// ── WEATHER LOGIC ─────────────────────────────────────────
+function currentWeatherMultiplier() {
+  const w = (state.weather && state.weather.current) || 'clear';
+  if (w === 'sunny')    return SUNNY_SPEEDUP;
+  if (w === 'overcast') return OVERCAST_SLOWDOWN;
+  return 1.0;
+}
+
+function applyWeatherEffects(newWeatherId) {
+  const w = WEATHER_TYPES[newWeatherId];
+  // Count weather occurrences
+  if (!state.stats.weatherCounts) state.stats.weatherCounts = {};
+  state.stats.weatherCounts[newWeatherId] = (state.stats.weatherCounts[newWeatherId] || 0) + 1;
+
+  if (newWeatherId === 'rain') {
+    // Water all unwatered planted plots
+    let count = 0;
+    state.plots.forEach(p => {
+      if (p.state === 'planted' && !p.watered) {
+        p.watered = true;
+        count++;
+      }
+    });
+    if (count > 0) {
+      state.stats.rainWateredPlots = (state.stats.rainWateredPlots || 0) + count;
+      toast(`🌧️ Rain! ${count} plot${count>1?'s':''} watered for free!`);
+      renderGrid();
+      checkAchievements();
+    } else {
+      toast('🌧️ It\'s raining! (All plots already watered)');
+    }
+  } else if (newWeatherId === 'thunder') {
+    // Zap 1–5 occupied plots
+    const occupied = state.plots.map((p,i)=>({p,i})).filter(({p})=>p.state!=='empty');
+    if (occupied.length > 0) {
+      const zapCount = Math.min(occupied.length, Math.floor(Math.random() * 5) + 1);
+      // Shuffle and take first zapCount
+      for (let i = occupied.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i+1));
+        [occupied[i], occupied[j]] = [occupied[j], occupied[i]];
+      }
+      const zapped = occupied.slice(0, zapCount);
+      zapped.forEach(({p,i}) => {
+        p.state = 'empty'; p.crop = null; p.plantedAt = null; p.watered = false; p.fertilized = false;
+        notifiedPlots.delete(i);
+      });
+      state.stats.cropsLostToWeather = (state.stats.cropsLostToWeather||0) + zapCount;
+      state.stats.thunderSurvived = (state.stats.thunderSurvived||0) + 1;
+      toast(`⛈️ Thunderstorm! ${zapCount} crop${zapCount>1?'s were':' was'} zapped! 💀`);
+      renderGrid();
+      checkAchievements();
+    } else {
+      state.stats.thunderSurvived = (state.stats.thunderSurvived||0) + 1;
+      toast('⛈️ Thunderstorm! (Nothing to zap this time)');
+      checkAchievements();
+    }
+  } else if (newWeatherId === 'flood') {
+    // Wipe a random row that has at least one occupied plot
+    const occupiedRows = [];
+    for (let r = 0; r < state.rows; r++) {
+      for (let c = 0; c < state.cols; c++) {
+        const idx = r * state.cols + c;
+        if (state.plots[idx] && state.plots[idx].state !== 'empty') {
+          if (!occupiedRows.includes(r)) occupiedRows.push(r);
+        }
+      }
+    }
+    if (occupiedRows.length > 0) {
+      const row = occupiedRows[Math.floor(Math.random() * occupiedRows.length)];
+      let lost = 0;
+      for (let c = 0; c < state.cols; c++) {
+        const idx = row * state.cols + c;
+        if (state.plots[idx] && state.plots[idx].state !== 'empty') {
+          state.plots[idx] = { state:'empty', crop:null, plantedAt:null, watered:false, fertilized:false };
+          notifiedPlots.delete(idx);
+          lost++;
+        }
+      }
+      state.stats.cropsLostToWeather = (state.stats.cropsLostToWeather||0) + lost;
+      state.stats.floodSurvived = (state.stats.floodSurvived||0) + 1;
+      toast(`🌊 Flood! Row ${row+1} was wiped out! (${lost} crop${lost>1?'s':''} lost)`);
+      renderGrid();
+      checkAchievements();
+    } else {
+      state.stats.floodSurvived = (state.stats.floodSurvived||0) + 1;
+      toast('🌊 Flood! (No crops to destroy this time)');
+      checkAchievements();
+    }
+  } else if (newWeatherId === 'sunny') {
+    toast('☀️ Sunny! Crops are growing 20% faster.');
+  } else if (newWeatherId === 'overcast') {
+    toast('☁️ Overcast. Crops are growing 20% slower.');
+  } else {
+    toast('🌤️ Skies have cleared up.');
+  }
+}
+
+function tickWeather() {
+  if (!state.weather) state.weather = { current: 'clear', changedAt: Date.now() };
+  const elapsed = Date.now() - state.weather.changedAt;
+  if (elapsed >= WEATHER_DURATION_MS) {
+    const newW = pickWeather();
+    state.weather.current = newW;
+    state.weather.changedAt = Date.now();
+    saveState();
+    applyWeatherEffects(newW);
+    updateWeatherBanner();
+  } else {
+    updateWeatherBanner();
+  }
+}
+
+function updateWeatherBanner() {
+  if (!state.weather) return;
+  const w = WEATHER_TYPES[state.weather.current] || WEATHER_TYPES.clear;
+  const banner = document.getElementById('weather-banner');
+  if (!banner) return;
+  banner.className = 'weather-banner ' + (w.cls || '');
+  document.getElementById('weather-icon').textContent = w.icon;
+  document.getElementById('weather-name').textContent = w.name;
+  document.getElementById('weather-desc').textContent = w.desc;
+  const remaining = Math.max(0, WEATHER_DURATION_MS - (Date.now() - state.weather.changedAt));
+  const mins = Math.ceil(remaining / 60000);
+  document.getElementById('weather-timer').textContent = mins > 0 ? `${mins}m left` : 'Changing...';
+}
+
 // ── TICK ──────────────────────────────────────────────────
 function tick() {
+  tickWeather();
+  const weatherMult = currentWeatherMultiplier();
   let changed = false;
   state.plots.forEach((plot, i) => {
     if (plot.state === 'planted') {
       const crop = CROPS[plot.crop || 'wheat'];
-      const growMs = plot.watered ? crop.growMs * WATER_SPEEDUP : crop.growMs;
+      let growMs = plot.watered ? crop.growMs * WATER_SPEEDUP : crop.growMs;
+      growMs *= weatherMult;
       const elapsed = Date.now() - plot.plantedAt;
       if (elapsed >= growMs) {
         plot.state = 'ready';
@@ -1547,6 +1965,16 @@ function doReset() {
     rows: 2, cols: 2,
     rowExpands: 0, colExpands: 0,
     plots: [],
+    weather: { current: 'clear', changedAt: Date.now() },
+    unlockedAchievements: [],
+    stats: {
+      totalHarvests: 0, wheatHarvests: 0, totalWatered: 0, totalFertilized: 0,
+      sellActions: 0, cropsLostToWeather: 0, rainWateredPlots: 0,
+      thunderSurvived: 0, floodSurvived: 0, glovesUses: 0,
+      truffleHarvests: 0, weatherCounts: {},
+      everBoughtWater: false, everBoughtFert: false,
+    },
+    begTaps: 0,
   };
   selectedCrop = 'wheat';
   initPlots();
@@ -1555,6 +1983,9 @@ function doReset() {
   updateHeader();
   updateShopUI();
   updateFarmToolbar();
+  updateWeatherBanner();
+  updateHint();
+  updateBegZone();
   closeModal();
   toast('🌱 Farm reset! Starting fresh.');
 }
@@ -1600,6 +2031,15 @@ function init() {
   if (!state.truffle) state.truffle = 0;
   if (!state.barnLevel)     state.barnLevel     = 0;
   if (!state.lifetimeCoins) state.lifetimeCoins = 0;
+  // Migrate weather
+  if (!state.weather) state.weather = { current: 'clear', changedAt: Date.now() };
+  if (!state.unlockedAchievements) state.unlockedAchievements = [];
+  if (!state.stats) state.stats = {};
+  if (!state.stats.weatherCounts) state.stats.weatherCounts = {};
+  if (state.stats.wheatHarvests === undefined) state.stats.wheatHarvests = 0;
+  if (state.stats.everBoughtWater === undefined) state.stats.everBoughtWater = false;
+  if (state.stats.everBoughtFert  === undefined) state.stats.everBoughtFert  = false;
+  if (state.begTaps === undefined) state.begTaps = 0;
   // Migrate old plot format
   state.plots.forEach(p => {
     if (!p.crop) p.crop = 'wheat';
@@ -1627,10 +2067,130 @@ function init() {
   updateShopUI();
   updateFarmToolbar();
 
-  const hint = document.getElementById('farm-hint');
-  if (hint) hint.textContent = 'Tap empty to plant · Tap growing to water/fertilize · Tap 🌾🌽 to harvest';
-
+  updateHint();
+  updateBegZone();
   setInterval(tick, 1000);
+  updateWeatherBanner();
+  checkAchievements();
+}
+
+// ── ACHIEVEMENTS ENGINE ───────────────────────────────────
+function checkAchievements() {
+  if (!state.unlockedAchievements) state.unlockedAchievements = [];
+  let newUnlock = false;
+  ACHIEVEMENTS.forEach(a => {
+    if (!state.unlockedAchievements.includes(a.id)) {
+      try {
+        if (a.check(state)) {
+          state.unlockedAchievements.push(a.id);
+          newUnlock = true;
+          // Delay toast so it doesn't collide with other messages
+          setTimeout(() => toast(`🏆 Achievement unlocked: ${a.name}!`), 800);
+        }
+      } catch(e) {}
+    }
+  });
+  if (newUnlock) {
+    saveState();
+    // Refresh log tab badge if open
+    const logPanel = document.getElementById('tab-log');
+    if (logPanel && logPanel.classList.contains('active')) renderLogTab();
+    // Update tab badge
+    updateLogBadge();
+  }
+}
+
+function updateLogBadge() {
+  const unlocked = (state.unlockedAchievements || []).length;
+  const total = ACHIEVEMENTS.length;
+  // Could add a badge to the tab button here — for now just keeps count accurate
+}
+
+// ── LOG TAB RENDERER ──────────────────────────────────────
+function renderLogTab() {
+  renderAchievements();
+  renderStats();
+  renderWeatherHistory();
+}
+
+function renderAchievements() {
+  const grid = document.getElementById('achievement-grid');
+  const prog = document.getElementById('achievement-progress');
+  if (!grid) return;
+  const unlocked = state.unlockedAchievements || [];
+  prog.textContent = `${unlocked.length}/${ACHIEVEMENTS.length}`;
+  grid.innerHTML = '';
+  ACHIEVEMENTS.forEach(a => {
+    const isUnlocked = unlocked.includes(a.id);
+    const card = document.createElement('div');
+    card.className = 'achievement-card ' + (isUnlocked ? 'unlocked' : 'locked');
+    card.innerHTML = `
+      <div class="achievement-icon">${a.icon}</div>
+      <div class="achievement-name">${a.name}</div>
+      <div class="achievement-desc">${isUnlocked ? a.desc : '???'}</div>
+      ${isUnlocked ? '<div class="achievement-badge">✓</div>' : ''}
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function renderStats() {
+  const grid = document.getElementById('stats-grid');
+  if (!grid) return;
+  const s = state.stats || {};
+  const statItems = [
+    { icon:'🌾', label:'Crops Harvested',    val: s.totalHarvests || 0 },
+    { icon:'🪙', label:'Lifetime Coins',     val: state.lifetimeCoins || 0 },
+    { icon:'💧', label:'Plots Watered',      val: s.totalWatered || 0 },
+    { icon:'🌿', label:'Plots Fertilized',   val: s.totalFertilized || 0 },
+    { icon:'🏪', label:'Sell Actions',       val: s.sellActions || 0 },
+    { icon:'💀', label:'Crops Lost to Weather', val: s.cropsLostToWeather || 0 },
+    { icon:'🍄', label:'Truffles Harvested', val: s.truffleHarvests || 0 },
+    { icon:'🧤', label:'Gloves Uses',        val: s.glovesUses || 0 },
+  ];
+  grid.innerHTML = '';
+  statItems.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'stat-card';
+    card.innerHTML = `
+      <div class="stat-card-icon">${item.icon}</div>
+      <div class="stat-card-val">${item.val.toLocaleString()}</div>
+      <div class="stat-card-label">${item.label}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function renderWeatherHistory() {
+  const list = document.getElementById('weather-history-list');
+  if (!list) return;
+  const counts = (state.stats && state.stats.weatherCounts) || {};
+  const total = Object.values(counts).reduce((a,b) => a+b, 0);
+  if (total === 0) {
+    list.innerHTML = '<p class="empty-hint">No weather events recorded yet.</p>';
+    return;
+  }
+  list.innerHTML = '';
+  Object.values(WEATHER_TYPES).forEach(w => {
+    const count = counts[w.id] || 0;
+    if (count === 0) return;
+    const pct = Math.round((count / total) * 100);
+    const row = document.createElement('div');
+    row.style.cssText = 'background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;';
+    row.innerHTML = `
+      <span style="font-size:22px">${w.icon}</span>
+      <div style="flex:1">
+        <div style="font-weight:800;font-size:13px">${w.name}</div>
+        <div style="height:6px;background:var(--bg3);border-radius:3px;margin-top:4px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:3px;transition:width 0.5s"></div>
+        </div>
+      </div>
+      <div style="font-family:'Silkscreen',monospace;font-size:11px;color:var(--text2);text-align:right">
+        <div>${count}×</div><div style="color:var(--text3)">${pct}%</div>
+      </div>
+    `;
+    list.appendChild(row);
+  });
 }
 
 init();
