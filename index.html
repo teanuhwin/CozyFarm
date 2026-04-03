@@ -1103,7 +1103,7 @@
       </div>
     </div>
 
-    <p class="empty-hint" style="margin-top:32px; font-size:11px;">🌾 Cozy Farm v2.0 · Saves locally in your browser</p>
+    <p class="empty-hint" style="margin-top:32px; font-size:11px;">🌾 Cozy Farm v2.1 · Saves locally in your browser</p>
   </div>
 </main>
 
@@ -2175,6 +2175,7 @@ function doReset() {
     },
     begTaps: 0,
     npcs: {},
+    unlockedNpcs: ['kimchi'],
   };
   selectedCrop = 'wheat';
   selectedTool = 'plant';
@@ -2215,7 +2216,7 @@ function formatTime(secs) {
 // ── TOWN SQUARE (PHASE 2) ─────────────────────────────────
 const NPC_DATA = {
   kalbi: {
-    name: 'Old Man Kalbi', role: 'Grumpy/Traditional', sprite: '👴',
+    name: 'Old Man Kalbi', role: 'Grumpy but sweet. Focused on tradition and high-volume staples.', sprite: '👴',
     requests: [
       { type: 'crop', cropKey: 'wheat', text: 'The local bakery is out of flour! I need {qty} 🌾 Wheat or there will be no toast in this town tomorrow!' },
       { type: 'coin', text: 'My tractor\'s engine fell out. It\'s an antique, and the parts are {qty} 🪙. Help an old man out?' },
@@ -2223,7 +2224,7 @@ const NPC_DATA = {
     ],
   },
   kimchi: {
-    name: 'Mayor Kimchi', role: 'Shiba Inu / Ambitious', sprite: '🐕',
+    name: 'Mayor Kimchi', role: 'A literal dog. Her human assistant translates her ambitious city planning.', sprite: '🐕',
     requests: [
       { type: 'coin', text: 'Woof! (Assistant: The Mayor is commissioning a gold-plated fire hydrant for the park. It costs {qty} 🪙.)' },
       { type: 'crop', cropKey: 'corn', text: 'Bark! (Assistant: We are hosting the \'Yellow Festival.\' Please provide {qty} 🌽 Corn for the decor.)' },
@@ -2231,7 +2232,7 @@ const NPC_DATA = {
     ],
   },
   ellie: {
-    name: 'Lady Ellie', role: 'High Society / Elite', sprite: '👒',
+    name: 'Lady Ellie', role: 'High society. She views your farm as her personal gourmet pantry.', sprite: '👒',
     requests: [
       { type: 'crop', cropKey: 'truffle', text: 'My catering team needs {qty} 🍄 Truffles for the Royal Gala. Don\'t be late; the Queen is coming.' },
       { type: 'coin', text: 'I\'ve decided to buy the local fountain. It\'s a steal at {qty} 🪙. Do handle the transaction for me.' },
@@ -2239,7 +2240,7 @@ const NPC_DATA = {
     ],
   },
   twins: {
-    name: 'Mason & Jason', role: 'Chaotic Children', sprite: '👫',
+    name: 'Mason & Jason', role: 'Chaotic children. Their "projects" have become increasingly expensive and large-scale.', sprite: '👫',
     requests: [
       { type: 'crop', cropKey: 'corn', text: 'We\'re building a fortress made of kernels! We need {qty} 🌽 Corn right now!' },
       { type: 'coin', text: 'We accidentally \'rented\' a hot air balloon and can\'t get down. The pilot wants {qty} 🪙 to land.' },
@@ -2247,7 +2248,7 @@ const NPC_DATA = {
     ],
   },
   maru: {
-    name: 'Hunter Maru', role: 'Cat (w/ Crow)', sprite: '🐱',
+    name: 'Hunter Maru', role: 'A literal cat. He speaks in meows and hisses, which are translated by his loyal (and slightly sarcastic) crow assistant.', sprite: '🐱',
     requests: [
       { type: 'crop', cropKey: 'truffle', text: 'Meow! (Crow: The fuzz-ball says he\'s stockpiling for the Great Freeze. {qty} 🍄 Truffles should keep his belly full.)' },
       { type: 'coin', text: 'Hiss! (Crow: Someone stepped on his tail. He needs {qty} 🪙 to buy that cabin and turn it into a sanctuary.)' },
@@ -2255,7 +2256,7 @@ const NPC_DATA = {
     ],
   },
   cinna: {
-    name: 'Herbalist Cinna', role: 'Medicinal/Calm', sprite: '🌿',
+    name: 'Herbalist Cinna', role: 'Calm and medicinal. She now runs a large-scale apothecary.', sprite: '🌿',
     requests: [
       { type: 'crop', cropKey: 'wheat', text: 'The whole town has the sniffles. I need {qty} 🌾 Wheat to make soothing herbal compresses.' },
       { type: 'coin', text: 'I\'m building a community greenhouse. The glass alone is {qty} 🪙.' },
@@ -2263,7 +2264,7 @@ const NPC_DATA = {
     ],
   },
   kola: {
-    name: 'Wizard Kola', role: 'Eccentric/Cosmic', sprite: '🧙',
+    name: 'Wizard Kola', role: 'Eccentric. His requests involve massive amounts of resources for "cosmic stability.', sprite: '🧙',
     requests: [
       { type: 'crop', cropKey: 'pumpkin', text: 'The Moon is hungry. It has requested {qty} 🎃 Pumpkins. Do not ask why the Moon eats.' },
       { type: 'coin', text: 'I tried to buy a star. Turns out, they are expensive. I\'m short {qty} 🪙 on the down payment.' },
@@ -2308,9 +2309,13 @@ function generateRequest(npcId) {
   return req;
 }
 
+// Ordered introduction sequence — kimchi is always first
+const NPC_ORDER = ['kimchi', 'kalbi', 'ellie', 'twins', 'maru', 'cinna', 'kola'];
+
 function migrateNpcs() {
   if (!state.npcs) state.npcs = {};
-  Object.keys(NPC_DATA).forEach(id => {
+  if (!state.unlockedNpcs) state.unlockedNpcs = ['kimchi'];
+  NPC_ORDER.forEach(id => {
     if (!state.npcs[id]) {
       state.npcs[id] = { affinity: 0, request: null, nextRequestAt: 0 };
     }
@@ -2319,11 +2324,25 @@ function migrateNpcs() {
   });
 }
 
+function unlockedNpcIds() {
+  return (state.unlockedNpcs || ['kimchi']).filter(id => NPC_DATA[id]);
+}
+
+function tryUnlockNextNpc() {
+  const unlocked = state.unlockedNpcs || ['kimchi'];
+  const next = NPC_ORDER.find(id => !unlocked.includes(id));
+  if (!next) return;
+  state.unlockedNpcs.push(next);
+  // Give them an immediate request
+  state.npcs[next].nextRequestAt = 0;
+  setTimeout(() => toast(`🏘️ ${NPC_DATA[next].name} has moved to town!`), 600);
+}
+
 function tickNpcs() {
   if (!isTownUnlocked()) return;
   migrateNpcs();
   let changed = false;
-  Object.keys(NPC_DATA).forEach(id => {
+  unlockedNpcIds().forEach(id => {
     const npc = state.npcs[id];
     if (!npc.request && Date.now() >= npc.nextRequestAt) {
       npc.request = generateRequest(id);
@@ -2334,7 +2353,6 @@ function tickNpcs() {
   if (changed) {
     saveState();
     updateTownBadge();
-    // Refresh town tab if open
     const panel = document.getElementById('tab-town');
     if (panel && panel.classList.contains('active')) renderTownTab();
   }
@@ -2364,6 +2382,9 @@ function deliverRequest(npcId) {
   npc.request = null;
   npc.nextRequestAt = Date.now() + randInt(NPC_COOLDOWN_MIN, NPC_COOLDOWN_MAX);
 
+  // Unlock next NPC
+  tryUnlockNextNpc();
+
   saveState();
   updateHeader();
   updateShopUI();
@@ -2391,7 +2412,7 @@ function updateTownBadge() {
   const badge = document.getElementById('town-badge');
   if (!badge) return;
   migrateNpcs();
-  const hasNew = Object.keys(NPC_DATA).some(id => {
+  const hasNew = unlockedNpcIds().some(id => {
     const npc = state.npcs[id];
     return npc.request !== null;
   });
@@ -2421,7 +2442,7 @@ function renderTownTab() {
   const list = document.getElementById('npc-list');
   list.innerHTML = '';
 
-  Object.entries(NPC_DATA).forEach(([id, data]) => {
+  Object.entries(NPC_DATA).filter(([id]) => unlockedNpcIds().includes(id)).forEach(([id, data]) => {
     const npc = state.npcs[id];
     const req = npc.request;
     const onCooldown = !req && Date.now() < npc.nextRequestAt;
