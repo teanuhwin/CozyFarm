@@ -13,7 +13,7 @@ A cozy idle farming game that runs entirely in your browser — no server, no lo
 5. **Go to the Shop** to sell your harvest, buy more seeds, and purchase supplies
 6. **Expand your farm** by buying more rows and columns
 
-Tap a **growing plot** to apply water or fertilizer, or to check how much time is left.
+Tap a **growing plot** to apply water or fertilizer, or to check how much time is left. Tapping a ready plot while in water or fertilizer mode will harvest it automatically.
 
 ---
 
@@ -83,6 +83,36 @@ Water and fertilizer can be stacked on the same plot. Gloves durability is shown
 | 3rd | 🪙313 |
 | 4th | 🪙781 |
 | … | ×2.5 each time |
+
+---
+
+## Town Square
+
+The **Town tab** unlocks once you've reached a full 6×6 farm grid and upgraded your barn to Level 3. It's a late-game system for trading surplus crops and coins for **Affinity** with your neighbors.
+
+### NPCs
+
+| NPC | Personality |
+|-----|-------------|
+| 👴 Old Man Kalbi | Grumpy/Traditional |
+| 🐕 Mayor Kimchi | Shiba Inu / Ambitious |
+| 👒 Lady Ellie | High Society / Elite |
+| 👫 Mason & Jason | Chaotic Children |
+| 🐱 Hunter Maru | Cat (w/ Crow) |
+| 🌿 Herbalist Cinna | Medicinal/Calm |
+| 🧙 Wizard Kola | Eccentric/Cosmic |
+
+### How It Works
+
+Each NPC generates one request at a time — either for a bulk crop delivery, a coin payment, or a combination of both. Fulfill the request to earn **+1 Affinity** with that neighbor. After delivery, the NPC rests for 1–10 minutes before posting a new request.
+
+- **Crop requests:** 30–80 units of a single crop type
+- **Coin requests:** 🪙3,000–🪙7,000
+- **Combo requests:** both a crop and coins
+
+A red **!** badge appears on the Town tab button when any NPC has an active request. Requirement pills on each card show how much you currently have versus how much is needed, and turn green when you're ready to deliver.
+
+Cooldowns are timestamp-based and progress while the tab is closed.
 
 ---
 
@@ -163,6 +193,7 @@ To use a custom domain, add it under **Settings → Pages → Custom domain** an
 - Settings stored under `cozyfarm_settings`
 - Growth uses `Date.now()` timestamps — crops grow in real time while the tab is closed
 - Weather uses an hourly timestamp stored in state — persists across sessions
+- NPC cooldowns use `Date.now()` timestamps — timers progress while the tab is closed
 - Save migration runs on load to handle older save formats gracefully
 - Fonts: [Silkscreen](https://fonts.google.com/specimen/Silkscreen) (logo & stat values) + [Nunito](https://fonts.google.com/specimen/Nunito) (all body text) via Google Fonts
 - Vibration uses the [Web Vibration API](https://developer.mozilla.org/en-US/docs/Web/API/Vibration_API) — silently ignored on desktop
