@@ -16,13 +16,13 @@
     --card: #2a3320;
     --card2: #333f28;
     --border: #4a5c35;
-    --text: #d4e8b0;
-    --text2: #8aaa60;
-    --text3: #5a7a3a;
+    --text: #dff0b8;
+    --text2: #9dc070;
+    --text3: #6a8e46;
     --accent: #8bc34a;
     --accent2: #aedd6e;
-    --gold: #f4c842;
-    --gold2: #ffe066;
+    --gold: #f6d050;
+    --gold2: #ffe87a;
     --red: #e05c4a;
     --plot-empty: #3d2e1a;
     --plot-border: #5a4020;
@@ -211,23 +211,34 @@
     50% { box-shadow: 0 0 22px rgba(139,195,74,0.6); }
   }
 
-  .plot-emoji { font-size: clamp(28px, 8vw, 48px); line-height: 1; }
+  .plot-emoji { font-size: clamp(16px, 5.5vw, 48px); line-height: 1; }
   .plot-label {
-    font-size: clamp(10px, 2.8vw, 13px);
+    font-size: clamp(8px, 2vw, 13px);
     font-weight: 800;
     color: var(--text3);
-    margin-top: 4px;
+    margin-top: 2px;
     font-family: 'Nunito', sans-serif;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+    padding: 0 2px;
   }
   .plot.ready .plot-label { color: var(--accent2); }
 
   .plot-timer {
-    font-size: clamp(9px, 2.2vw, 12px);
+    font-size: clamp(7px, 1.8vw, 12px);
     color: var(--text3);
     font-family: 'Nunito', sans-serif;
     font-weight: 700;
-    margin-top: 2px;
+    margin-top: 1px;
   }
+
+  /* 6-col grids: shrink further */
+  .farm-grid.cols-6 .plot-emoji { font-size: clamp(14px, 4.5vw, 36px); }
+  .farm-grid.cols-6 .plot-label { font-size: clamp(7px, 1.6vw, 11px); }
+  .farm-grid.cols-6 .plot-timer { font-size: clamp(6px, 1.4vw, 10px); }
+  .farm-grid.cols-6 .plot-mods  { font-size: clamp(6px, 1.4vw, 9px); }
 
   /* progress bar */
   .plot-progress {
@@ -320,6 +331,20 @@
     font-family: 'Nunito', sans-serif;
     display: inline;
   }
+
+  /* max farm reached banner */
+  .max-farm-banner {
+    background: color-mix(in srgb, var(--accent) 10%, var(--card));
+    border: 1.5px solid var(--accent);
+    border-radius: 14px;
+    padding: 16px;
+    text-align: center;
+    display: none;
+  }
+  .max-farm-banner.visible { display: block; }
+  .max-farm-banner .mfb-icon { font-size: 32px; margin-bottom: 6px; }
+  .max-farm-banner .mfb-title { font-weight: 800; font-size: 15px; color: var(--accent2); margin-bottom: 4px; }
+  .max-farm-banner .mfb-desc  { font-size: 12px; color: var(--text2); line-height: 1.5; }
 
   /* expand grid card */
   .expand-grid {
@@ -727,9 +752,9 @@
     position: absolute;
     top: 6px;
     right: calc(50% - 14px);
-    background: var(--red);
-    color: #fff;
-    font-size: 9px;
+    background: var(--gold);
+    color: #2a1a00;
+    font-size: 10px;
     font-weight: 800;
     border-radius: 20px;
     padding: 1px 5px;
@@ -1008,7 +1033,12 @@
     </div>
 
     <div class="section-title">🏡 Expand Farm</div>
-    <div class="expand-grid">
+    <div class="max-farm-banner" id="max-farm-banner">
+      <div class="mfb-icon">🗺️</div>
+      <div class="mfb-title">Max Farm Size Reached!</div>
+      <div class="mfb-desc">Your farm is a full 6×6 grid — the biggest it can be. Time to focus on mastering the land you have!</div>
+    </div>
+    <div class="expand-grid" id="expand-grid-cards">
       <div class="expand-card">
         <div class="shop-icon">➕</div>
         <div class="shop-name">Add Row</div>
@@ -1103,7 +1133,7 @@
       </div>
     </div>
 
-    <p class="empty-hint" style="margin-top:32px; font-size:11px;">🌾 Cozy Farm v2.1 · Saves locally in your browser</p>
+    <p class="empty-hint" style="margin-top:32px; font-size:11px;">🌾 Cozy Farm v2.2 · Saves locally in your browser</p>
   </div>
 </main>
 
@@ -1120,7 +1150,7 @@
   </button>
   <button class="tab-btn" id="town-tab-btn" data-tab="town" onclick="switchTab('town', this)" style="display:none">
     <span class="tab-icon">🏘️</span>Town
-    <span class="tab-badge" id="town-badge" style="display:none">!</span>
+    <span class="tab-badge" id="town-badge" style="display:none">?</span>
   </button>
   <button class="tab-btn" data-tab="settings" onclick="switchTab('settings', this)">
     <span class="tab-icon">⚙️</span>Settings
@@ -1685,6 +1715,11 @@ function updateBegZone() {
 function updateHint() {
   const hint = document.getElementById('farm-hint');
   if (!hint) return;
+  // Hide helper text once farm is maxed out
+  if (state.rows >= MAX_ROWS && state.cols >= MAX_COLS) {
+    hint.textContent = '';
+    return;
+  }
   const hasWater = state.stats.everBoughtWater || (state.water||0) > 0;
   const hasFert  = state.stats.everBoughtFert  || (state.fertilizer||0) > 0;
   if (hasWater || hasFert) {
@@ -1768,6 +1803,8 @@ function el(id) { return document.getElementById(id); }
 function renderGrid() {
   const grid = document.getElementById('farm-grid');
   grid.style.gridTemplateColumns = `repeat(${state.cols}, 1fr)`;
+  // Tag grid with column count for responsive CSS
+  grid.className = `farm-grid cols-${state.cols}`;
   // Ensure correct number of plot elements
   const needed = state.rows * state.cols;
   while (grid.children.length < needed) {
@@ -1985,6 +2022,17 @@ function updateShopUI() {
   el('col-btn').disabled = state.coins < cCost || state.cols >= MAX_COLS;
   el('row-desc').textContent = state.rows >= MAX_ROWS ? 'Max rows reached' : `${state.rows} → ${state.rows+1} rows`;
   el('col-desc').textContent = state.cols >= MAX_COLS ? 'Max cols reached' : `${state.cols} → ${state.cols+1} cols`;
+
+  // Max farm banner / hide expand cards
+  const maxFarmBanner = el('max-farm-banner');
+  const expandCards   = el('expand-grid-cards');
+  if (maxGridReached) {
+    if (maxFarmBanner) maxFarmBanner.classList.add('visible');
+    if (expandCards)   expandCards.style.display = 'none';
+  } else {
+    if (maxFarmBanner) maxFarmBanner.classList.remove('visible');
+    if (expandCards)   expandCards.style.display = '';
+  }
 }
 
 // ── WEATHER LOGIC ─────────────────────────────────────────
@@ -2276,6 +2324,8 @@ const NPC_DATA = {
 const CROP_EMOJI = { wheat:'🌾', corn:'🌽', pumpkin:'🎃', truffle:'🍄' };
 const NPC_COOLDOWN_MIN = 1 * 60 * 1000;
 const NPC_COOLDOWN_MAX = 10 * 60 * 1000;
+const NPC_COOLDOWN_UNLOCKED_MIN = 1 * 60 * 1000;   // 1 min
+const NPC_COOLDOWN_UNLOCKED_MAX = 15 * 60 * 1000;  // 15 min
 const REQ_CROP_MIN = 30, REQ_CROP_MAX = 80;
 const REQ_COIN_MIN = 3000, REQ_COIN_MAX = 7000;
 
@@ -2380,7 +2430,11 @@ function deliverRequest(npcId) {
   // Reward
   npc.affinity += 1;
   npc.request = null;
-  npc.nextRequestAt = Date.now() + randInt(NPC_COOLDOWN_MIN, NPC_COOLDOWN_MAX);
+  // If all NPCs are unlocked, use the wider randomised 1–15 min window
+  const allUnlocked = (state.unlockedNpcs || []).length >= NPC_ORDER.length;
+  const cdMin = allUnlocked ? NPC_COOLDOWN_UNLOCKED_MIN : NPC_COOLDOWN_MIN;
+  const cdMax = allUnlocked ? NPC_COOLDOWN_UNLOCKED_MAX : NPC_COOLDOWN_MAX;
+  npc.nextRequestAt = Date.now() + randInt(cdMin, cdMax);
 
   // Unlock next NPC
   tryUnlockNextNpc();
@@ -2475,8 +2529,14 @@ function renderTownTab() {
           </button>
         </div>`;
     } else if (onCooldown) {
-      const secs = Math.max(0, Math.ceil((npc.nextRequestAt - Date.now()) / 1000));
-      bodyHtml = `<div class="npc-dialogue" style="font-style:normal;color:var(--text3);text-align:center;">💤 Resting… next request in <span class="cooldown-msg" data-npc="${id}" data-until="${npc.nextRequestAt}">${formatTime(secs)}</span></div>`;
+      const allNpcsUnlocked = (state.unlockedNpcs || []).length >= NPC_ORDER.length;
+      if (allNpcsUnlocked) {
+        // Hide exact timer — just show a friendly resting state
+        bodyHtml = `<div class="npc-dialogue" style="font-style:normal;color:var(--text3);text-align:center;">💤 Resting… they'll be back soon!</div>`;
+      } else {
+        const secs = Math.max(0, Math.ceil((npc.nextRequestAt - Date.now()) / 1000));
+        bodyHtml = `<div class="npc-dialogue" style="font-style:normal;color:var(--text3);text-align:center;">💤 Resting… next request in <span class="cooldown-msg" data-npc="${id}" data-until="${npc.nextRequestAt}">${formatTime(secs)}</span></div>`;
+      }
     } else {
       bodyHtml = `<div class="npc-dialogue" style="font-style:normal;color:var(--text3);text-align:center;">⏳ Preparing a request…</div>`;
     }
