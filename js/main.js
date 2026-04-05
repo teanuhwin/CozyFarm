@@ -17,6 +17,13 @@ import {
 import {
   migrateNpcs, tickNpcs, deliverRequest as npcDeliver,
   NPC_ORDER,
+  getGlovesUses, getGlovesChance,
+  getWheatSellMult, getWheatYieldBonus, getWheatWeatherImmune,
+  getTruffleSellPrice, getTruffleGrowMult, getTruffleMinYield,
+  getCornYieldBonus, getCornSellMult, getCornGrowMult,
+  getPumpkinSellMult, getPumpkinWeatherMult,
+  getWaterSpeedup, getWaterHoseCost, getWaterHoseAreaBoost,
+  getFertYield, getBigFertCost, getBigFertYield, getFertInstantChance,
 } from './npcs.js';
 
 import {
@@ -31,6 +38,11 @@ import {
 let selectedCrop = 'wheat';
 let selectedTool = 'plant'; // 'plant' | 'water' | 'fert'
 let notifiedPlots = new Set();
+
+// Helper to get affinity level for an NPC without importing affinityLevel
+function affinityLevelFor(npcId) {
+  return Math.min(5, Math.floor((state.npcs[npcId]?.affinity || 0) / 3));
+}
 
 // ── TOOL / CROP SELECTION ─────────────────────────────────
 function selectCrop(type) {
@@ -113,7 +125,7 @@ function showPlotOptions(idx) {
   const crop         = CROPS[plot.crop];
   const elapsed      = Date.now() - plot.plantedAt;
   const weatherMult  = currentWeatherMultiplier();
-  const baseGrowMs   = plot.watered ? crop.growMs * WATER_SPEEDUP : crop.growMs;
+  const baseGrowMs   = plot.watered ? crop.growMs * (getWaterSpeedup() ?? WATER_SPEEDUP) : crop.growMs;
   const growMs       = baseGrowMs * weatherMult;
   const remaining    = Math.max(0, Math.ceil((growMs - elapsed) / 1000));
 
@@ -136,33 +148,90 @@ function harvestPlot(idx) {
   const cropKey = plot.crop || 'wheat';
 
   let yieldAmt = crop.yield;
-  if (plot.fertilized) yieldAmt += FERT_YIELD;
+
+  // Kola: enhanced fertilizer yield
+  if (plot.fertilized) {
+    const fertBonus = getFertYield();
+    yieldAmt += (fertBonus !== null ? fertBonus : FERT_YIELD);
+  }
+
+  // Kalbi: wheat yield bonus
+  if (cropKey === 'wheat') {
+    const wheatBonus = getWheatYieldBonus();
+    if (wheatBonus && Math.random() < wheatBonus.chance) {
+      yieldAmt += wheatBonus.extra;
+    }
+  }
+
+  // Twins: corn yield bonus
+  if (cropKey === 'corn') yieldAmt += getCornYieldBonus();
+
+  // Ellie: truffle min yield
+  if (cropKey === 'truffle') yieldAmt = Math.max(getTruffleMinYield(), yieldAmt);
 
   const space = barnCap() - totalBarnContents();
   if (space <= 0) { toast('🏚️ Barn full! Sell some crops first.'); return; }
-  yieldAmt = Math.min(yieldAmt, space);
+
+  // Partial harvest: take only what fits, leave the plot as ready if there's more
+  const partialHarvest = yieldAmt > space;
+  const actualHarvest = Math.min(yieldAmt, space);
+  yieldAmt = actualHarvest;
 
   state[cropKey] = (state[cropKey] || 0) + yieldAmt;
 
-  // Gloves seed-recovery chance
+  // Maru L2: 10% chance to find a truffle when harvesting pumpkin
+  if (cropKey === 'pumpkin' && affinityLevelFor('maru') >= 2 && Math.random() < 0.10) {
+    const truffleSpace = barnCap() - totalBarnContents();
+    if (truffleSpace > 0) {
+      state.truffle = (state.truffle || 0) + 1;
+      toast('🍄 Maru\'s instincts found a Truffle!');
+    }
+  }
+
+  // Maru L5: +1 yield to all other growing pumpkins
+  if (cropKey === 'pumpkin' && affinityLevelFor('maru') >= 5) {
+    state.plots.forEach((p, i) => {
+      if (i !== idx && p.state !== 'empty' && p.crop === 'pumpkin') {
+        const s = barnCap() - totalBarnContents();
+        if (s > 0) { state.pumpkin = (state.pumpkin || 0) + 1; }
+      }
+    });
+  }
+
+  // Kola L5: fertilizer triggers instant growth (handled at fertilize time, but also
+  // at harvest we note if the 25% proc is already applied from planting — no action needed here)
+
+  // Gloves seed-recovery
   let seedReturned = false;
+  const curGlovesUses = getGlovesUses();
+  const glovesChance  = getGlovesChance() !== null ? getGlovesChance() : GLOVES_CHANCE;
+  const glovesMax     = curGlovesUses === Infinity ? Infinity : (curGlovesUses !== null ? curGlovesUses : GLOVES_USES);
+
   if (state.glovesDurability > 0) {
-    if (Math.random() < GLOVES_CHANCE) {
+    if (Math.random() < glovesChance) {
       const seedKey = cropKey + 'Seeds';
       state[seedKey] = (state[seedKey] || 0) + 1;
       seedReturned = true;
     }
-    state.glovesDurability--;
-    state.stats.glovesUses = (state.stats.glovesUses || 0) + 1;
-    if (state.glovesDurability === 0) toast('🧤 Gloves worn out! Buy new ones.');
+    if (curGlovesUses !== Infinity) {
+      state.glovesDurability--;
+      state.stats.glovesUses = (state.stats.glovesUses || 0) + 1;
+      if (state.glovesDurability === 0) toast('🧤 Gloves worn out! Buy new ones.');
+    } else {
+      // Golden Mitts — never decrement
+      state.stats.glovesUses = (state.stats.glovesUses || 0) + 1;
+    }
   }
 
-  plot.state      = 'empty';
-  plot.crop       = null;
-  plot.plantedAt  = null;
-  plot.watered    = false;
-  plot.fertilized = false;
-  notifiedPlots.delete(idx);
+  if (!partialHarvest) {
+    plot.state      = 'empty';
+    plot.crop       = null;
+    plot.plantedAt  = null;
+    plot.watered    = false;
+    plot.fertilized = false;
+    notifiedPlots.delete(idx);
+  }
+  // Partial: plot stays 'ready' so player can harvest the rest after making barn space
 
   state.stats.totalHarvests   = (state.stats.totalHarvests  || 0) + 1;
   if (cropKey === 'wheat')   state.stats.wheatHarvests  = (state.stats.wheatHarvests  || 0) + 1;
@@ -173,7 +242,8 @@ function harvestPlot(idx) {
   updateHeader();
   updateShopUI();
   updateFarmToolbar(selectedCrop, selectedTool);
-  toast(`${crop.emoji} Harvested ${yieldAmt} ${crop.name}!${seedReturned ? ' 🌱 Seed returned!' : ''}`);
+  const partialMsg = partialHarvest ? ` (${space} fit — sell to grab the rest!)` : '';
+  toast(`${crop.emoji} Harvested ${yieldAmt} ${crop.name}!${seedReturned ? ' 🌱 Seed returned!' : ''}${partialMsg}`);
   updateHint();
   updateBegZone();
   checkAchievements();
@@ -185,7 +255,15 @@ function sellAllCrops() {
   if (total === 0) { toast('Nothing in the barn!'); return; }
   let earned = 0;
   ['wheat', 'corn', 'pumpkin', 'truffle'].forEach(k => {
-    if (state[k] > 0) { earned += state[k] * CROPS[k].sellPrice; state[k] = 0; }
+    if (state[k] > 0) {
+      let price = CROPS[k].sellPrice;
+      if (k === 'wheat')   price = Math.round(price * getWheatSellMult());
+      if (k === 'corn')    price = Math.round(price * getCornSellMult());
+      if (k === 'pumpkin') price = Math.round(price * getPumpkinSellMult());
+      if (k === 'truffle') price = getTruffleSellPrice(price);
+      earned += state[k] * price;
+      state[k] = 0;
+    }
   });
   state.coins       += earned;
   const prev         = state.lifetimeCoins || 0;
@@ -201,8 +279,16 @@ function sellAllCrops() {
 function sellCrop(cropKey, amount) {
   const stock = state[cropKey] || 0;
   if (stock === 0) { toast(`No ${CROPS[cropKey].name} to sell!`); return; }
-  const qty    = amount === 'all' ? stock : Math.min(amount, stock);
-  const earned = qty * CROPS[cropKey].sellPrice;
+  const qty = amount === 'all' ? stock : Math.min(amount, stock);
+
+  // Apply NPC sell price bonuses
+  let basePrice = CROPS[cropKey].sellPrice;
+  if (cropKey === 'wheat')   basePrice = Math.round(basePrice * getWheatSellMult());
+  if (cropKey === 'corn')    basePrice = Math.round(basePrice * getCornSellMult());
+  if (cropKey === 'pumpkin') basePrice = Math.round(basePrice * getPumpkinSellMult());
+  if (cropKey === 'truffle') basePrice = getTruffleSellPrice(basePrice);
+
+  const earned = qty * basePrice;
   state[cropKey]     -= qty;
   state.coins        += earned;
   const prev          = state.lifetimeCoins || 0;
@@ -258,25 +344,40 @@ function buyFertilizer(n) {
 }
 
 function buyWaterHose() {
-  if (state.coins < WATER_HOSE_COST) { toast(`Need ${WATER_HOSE_COST}🪙!`); return; }
+  const cost = getWaterHoseCost(WATER_HOSE_COST);
+  if (state.coins < cost) { toast(`Need ${cost}🪙!`); return; }
   const targets = state.plots.filter(p => p.state === 'planted' && !p.watered);
   if (targets.length === 0) { toast('No unwatered growing plots!'); return; }
-  state.coins -= WATER_HOSE_COST;
-  targets.forEach(p => { p.watered = true; });
-  saveState();
-  renderGrid(); updateHeader(); updateShopUI();
-  toast(`💧 Watered all ${targets.length} growing plot${targets.length > 1 ? 's' : ''}!`);
+  state.coins -= cost;
+  // Cinna L5: 2×2 area boost — water affects each plot + its neighbours
+  if (getWaterHoseAreaBoost()) {
+    state.plots.forEach(p => { if (p.state === 'planted') p.watered = true; });
+    const wetted = state.plots.filter(p => p.state === 'planted' && p.watered).length;
+    saveState(); renderGrid(); updateHeader(); updateShopUI();
+    toast(`💧✨ Torrent! All ${wetted} plots soaked${cost === 0 ? ' (free!)' : ''}!`);
+  } else {
+    targets.forEach(p => { p.watered = true; });
+    saveState(); renderGrid(); updateHeader(); updateShopUI();
+    toast(`💧 Watered all ${targets.length} growing plot${targets.length > 1 ? 's' : ''}!${cost === 0 ? ' (free!)' : ''}`);
+  }
 }
 
 function buyBigFertilizer() {
-  if (state.coins < BIG_FERT_COST) { toast(`Need ${BIG_FERT_COST}🪙!`); return; }
+  const cost = getBigFertCost(BIG_FERT_COST);
+  if (state.coins < cost) { toast(`Need ${cost}🪙!`); return; }
   const targets = state.plots.filter(p => p.state === 'planted' && !p.fertilized);
   if (targets.length === 0) { toast('No unfertilized growing plots!'); return; }
-  state.coins -= BIG_FERT_COST;
+  state.coins -= cost;
   targets.forEach(p => { p.fertilized = true; });
-  saveState();
-  renderGrid(); updateHeader(); updateShopUI();
-  toast(`🌿 Fertilized all ${targets.length} growing plot${targets.length > 1 ? 's' : ''}!`);
+  // Kola L5: 25% chance fertilizer triggers instant growth
+  const instantChance = getFertInstantChance();
+  if (instantChance > 0) {
+    targets.forEach(p => { if (Math.random() < instantChance) p.state = 'ready'; });
+  }
+  const bigYield = getBigFertYield();
+  const yieldMsg = bigYield !== null ? ` (+${bigYield} yield!)` : '';
+  saveState(); renderGrid(); updateHeader(); updateShopUI();
+  toast(`🌿 Fertilized all ${targets.length} plot${targets.length > 1 ? 's' : ''}!${yieldMsg}${cost === 0 ? ' (free!)' : ''}`);
 }
 
 function buyGloves() {
@@ -284,10 +385,11 @@ function buyGloves() {
   if (state.glovesDurability > 0) { toast('Gloves still have durability!'); return; }
   if (state.coins < GLOVES_COST) { toast(`Need ${GLOVES_COST}🪙!`); return; }
   state.coins -= GLOVES_COST;
-  state.glovesDurability = GLOVES_USES;
-  saveState();
-  updateHeader(); updateShopUI();
-  toast(`🧤 Gloves equipped! ${GLOVES_USES} uses.`);
+  const uses = getGlovesUses();
+  state.glovesDurability = uses === Infinity ? 9999 : (uses !== null ? uses : GLOVES_USES);
+  saveState(); updateHeader(); updateShopUI();
+  const usesLabel = uses === Infinity ? 'unlimited uses ✨' : `${state.glovesDurability} uses`;
+  toast(`🧤 Gloves equipped! ${usesLabel}.`);
 }
 
 function upgradeBarn() {
@@ -375,7 +477,9 @@ function applyWeatherEffects(newWeatherId) {
     }
 
   } else if (newWeatherId === 'thunder') {
-    const occupied = state.plots.map((p, i) => ({ p, i })).filter(({ p }) => p.state !== 'empty');
+    // Kalbi L5: wheat is immune to weather destruction
+    const wheatImmune = getWheatWeatherImmune();
+    const occupied = state.plots.map((p, i) => ({ p, i })).filter(({ p }) => p.state !== 'empty' && !(wheatImmune && p.crop === 'wheat'));
     if (occupied.length > 0) {
       const zapCount = Math.min(occupied.length, Math.floor(Math.random() * 5) + 1);
       for (let i = occupied.length - 1; i > 0; i--) {
@@ -388,7 +492,8 @@ function applyWeatherEffects(newWeatherId) {
       });
       state.stats.cropsLostToWeather = (state.stats.cropsLostToWeather || 0) + zapCount;
       state.stats.thunderSurvived    = (state.stats.thunderSurvived    || 0) + 1;
-      toast(`⛈️ Thunderstorm! ${zapCount} crop${zapCount > 1 ? 's were' : ' was'} zapped! 💀`);
+      const immuneMsg = wheatImmune ? ' (Wheat protected by Kalbi!)' : '';
+      toast(`⛈️ Thunderstorm! ${zapCount} crop${zapCount > 1 ? 's were' : ' was'} zapped! 💀${immuneMsg}`);
       renderGrid(); checkAchievements();
     } else {
       state.stats.thunderSurvived = (state.stats.thunderSurvived || 0) + 1;
@@ -397,11 +502,13 @@ function applyWeatherEffects(newWeatherId) {
     }
 
   } else if (newWeatherId === 'flood') {
+    const wheatImmune = getWheatWeatherImmune();
     const occupiedRows = [];
     for (let r = 0; r < state.rows; r++) {
       for (let c = 0; c < state.cols; c++) {
         const idx = r * state.cols + c;
-        if (state.plots[idx] && state.plots[idx].state !== 'empty' && !occupiedRows.includes(r)) {
+        const p = state.plots[idx];
+        if (p && p.state !== 'empty' && !(wheatImmune && p.crop === 'wheat') && !occupiedRows.includes(r)) {
           occupiedRows.push(r);
         }
       }
@@ -411,7 +518,8 @@ function applyWeatherEffects(newWeatherId) {
       let lost  = 0;
       for (let c = 0; c < state.cols; c++) {
         const idx = row * state.cols + c;
-        if (state.plots[idx] && state.plots[idx].state !== 'empty') {
+        const p = state.plots[idx];
+        if (p && p.state !== 'empty' && !(wheatImmune && p.crop === 'wheat')) {
           state.plots[idx] = { state:'empty', crop:null, plantedAt:null, watered:false, fertilized:false };
           notifiedPlots.delete(idx);
           lost++;
@@ -419,7 +527,8 @@ function applyWeatherEffects(newWeatherId) {
       }
       state.stats.cropsLostToWeather = (state.stats.cropsLostToWeather || 0) + lost;
       state.stats.floodSurvived      = (state.stats.floodSurvived      || 0) + 1;
-      toast(`🌊 Flood! Row ${row + 1} was wiped out! (${lost} crop${lost > 1 ? 's' : ''} lost)`);
+      const immuneMsg = wheatImmune ? " (Wheat survived — Kalbi's blessing!)" : '';
+      toast(`🌊 Flood! Row ${row + 1} hit! (${lost} crop${lost > 1 ? 's' : ''} lost)${immuneMsg}`);
       renderGrid(); checkAchievements();
     } else {
       state.stats.floodSurvived = (state.stats.floodSurvived || 0) + 1;
@@ -453,13 +562,24 @@ function tick() {
   tickTownCooldowns();
 
   const weatherMult = currentWeatherMultiplier();
+  const currentWeather = (state.weather && state.weather.current) || 'clear';
+  const isBadWeather = ['rain', 'thunder', 'flood'].includes(currentWeather);
   let changed = false;
 
   state.plots.forEach((plot, i) => {
     if (plot.state === 'planted') {
       const crop = CROPS[plot.crop || 'wheat'];
-      let growMs = plot.watered ? crop.growMs * WATER_SPEEDUP : crop.growMs;
+      const waterMult = plot.watered ? (getWaterSpeedup() ?? WATER_SPEEDUP) : 1.0;
+      let growMs = crop.growMs * waterMult;
+
+      // Crop-specific grow bonuses
+      if (plot.crop === 'truffle') growMs *= getTruffleGrowMult();
+      if (plot.crop === 'corn')    growMs *= getCornGrowMult();
+      if (plot.crop === 'pumpkin' && isBadWeather) growMs *= getPumpkinWeatherMult();
+      if (plot.crop === 'wheat' && affinityLevelFor('kalbi') >= 5) growMs *= 0.50;
+
       growMs *= weatherMult;
+
       if (Date.now() - plot.plantedAt >= growMs) {
         plot.state = 'ready';
         changed    = true;
@@ -615,11 +735,11 @@ function init() {
   el('setting-vibrate').checked = settings.vibrate;
 
   // Catch up crops that grew while the page was closed
-  const baseWaterSpeedup = WATER_SPEEDUP;
   state.plots.forEach(plot => {
     if (plot.state === 'planted') {
       const crop   = CROPS[plot.crop || 'wheat'];
-      const growMs = plot.watered ? crop.growMs * baseWaterSpeedup : crop.growMs;
+      const waterMult = plot.watered ? (getWaterSpeedup() ?? WATER_SPEEDUP) : 1.0;
+      const growMs = crop.growMs * waterMult;
       if (Date.now() - plot.plantedAt >= growMs) plot.state = 'ready';
     }
   });

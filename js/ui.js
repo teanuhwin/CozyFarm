@@ -10,6 +10,7 @@ import {
 import {
   NPC_DATA, NPC_ORDER, CROP_EMOJI,
   isTownUnlocked, migrateNpcs, unlockedNpcIds, canFulfill,
+  affinityLevel, bonusForLevel, activeBonusText, currentStoryText,
 } from './npcs.js';
 
 // ── SHORTHAND ─────────────────────────────────────────────
@@ -108,8 +109,10 @@ export function renderPlot(idx) {
     if (plot.state === 'planted') {
       emoji.textContent = crop.seedling;
       const weatherMult     = currentWeatherMultiplier();
+      // Use base water speedup for progress bar (NPC bonus handled in main.js tick)
+      const baseGrowMs      = plot.watered ? crop.growMs * 0.65 : crop.growMs;
       const elapsed         = Date.now() - plot.plantedAt;
-      const effectiveGrowMs = growMs * weatherMult;
+      const effectiveGrowMs = baseGrowMs * weatherMult;
       const pct             = Math.min(100, (elapsed / effectiveGrowMs) * 100);
       bar.style.width   = pct + '%';
       label.textContent = crop.name;
@@ -425,10 +428,41 @@ export function renderTownTab() {
       const req        = npc.request;
       const onCooldown = !req && Date.now() < npc.nextRequestAt;
       const fulfill    = req ? canFulfill(id) : false;
+      const maxed      = npc.affinity >= 15;
+      const lvl        = affinityLevel(id);
 
-      const hearts = '♥'.repeat(Math.min(5, Math.floor(npc.affinity / 3)));
-      const emptyH = '♡'.repeat(Math.max(0, 5 - Math.min(5, Math.floor(npc.affinity / 3))));
+      // Hearts based on level (0–5)
+      const hearts = '♥'.repeat(lvl);
+      const emptyH = '♡'.repeat(Math.max(0, 5 - lvl));
 
+      // Affinity progress within current level
+      const affinityInLevel = npc.affinity % 3;
+      const nextLevelAt     = lvl < 5 ? (lvl * 3) + 3 : 15;
+      const progressPct     = lvl >= 5 ? 100 : Math.round((npc.affinity / nextLevelAt) * 100);
+
+      // Build the affinity detail panel (shown when expanded)
+      const activeBonus = activeBonusText(id);
+      const story       = currentStoryText(id);
+
+      const bonusPips = data.bonuses.map((b, i) => {
+        const bLvl    = i + 1;
+        const reached = lvl >= bLvl;
+        const isCur   = lvl === bLvl;
+        // Hide future bonuses — keep them as a surprise
+        const pipText = reached ? b : '???';
+        return `<div class="affinity-bonus-pip ${reached ? 'reached' : ''} ${isCur ? 'current' : ''}">
+          <span class="pip-level">Lv.${bLvl}</span>
+          <span class="pip-text">${pipText}</span>
+        </div>`;
+      }).join('');
+
+      const expandedPanel = npc.expanded ? `
+        <div class="npc-affinity-panel">
+          ${story ? `<div class="npc-story-text">"${story}"</div>` : ''}
+          <div class="affinity-bonus-list">${bonusPips}</div>
+        </div>` : '';
+
+      // Request body
       let bodyHtml = '';
       if (req) {
         const pills = [];
@@ -441,8 +475,9 @@ export function renderTownTab() {
           const met = state.coins >= req.coins;
           pills.push(`<span class="req-pill ${met?'met':'unmet'}">🪙 Coins<span class="req-fraction">${state.coins.toLocaleString()}/${req.coins.toLocaleString()}</span></span>`);
         }
+        const capstoneTag = req.isCapstone ? `<span class="capstone-tag">⭐ FINAL</span>` : '';
         bodyHtml = `
-          <div class="npc-dialogue">"${req.text}"</div>
+          <div class="npc-dialogue">${capstoneTag}"${req.text}"</div>
           <div class="npc-reqs">${pills.join('')}</div>
           <div class="npc-footer">
             <span></span>
@@ -450,37 +485,49 @@ export function renderTownTab() {
               ${fulfill ? '📦 Deliver!' : '📦 Deliver'}
             </button>
           </div>`;
+      } else if (maxed) {
+        bodyHtml = `<div class="npc-dialogue maxed-msg">✨ Max Affinity reached! ${activeBonus}</div>`;
       } else if (onCooldown) {
         const allNpcsUnlocked = (state.unlockedNpcs || []).length >= NPC_ORDER.length;
         if (allNpcsUnlocked) {
           bodyHtml = `<div class="npc-dialogue" style="font-style:normal;color:var(--text3);text-align:center;">💤 Resting… they'll be back soon!</div>`;
         } else {
           const secs = Math.max(0, Math.ceil((npc.nextRequestAt - Date.now()) / 1000));
-          bodyHtml = `<div class="npc-dialogue" style="font-style:normal;color:var(--text3);text-align:center;">💤 Resting… next request in <span class="cooldown-msg" data-until="${npc.nextRequestAt}">${formatTime(secs)}</span></div>`;
+          bodyHtml = `<div class="npc-dialogue" style="font-style:normal;color:var(--text3);text-align:center;">💤 Resting… next in <span class="cooldown-msg" data-until="${npc.nextRequestAt}">${formatTime(secs)}</span></div>`;
         }
       } else {
         bodyHtml = `<div class="npc-dialogue" style="font-style:normal;color:var(--text3);text-align:center;">⏳ Preparing a request…</div>`;
       }
 
       const card = document.createElement('div');
-      card.className = `npc-card${fulfill?' fulfillable':''}${onCooldown?' on-cooldown':''}`;
+      card.className = `npc-card${fulfill?' fulfillable':''}${onCooldown?' on-cooldown':''}${maxed?' maxed':''}`;
       card.innerHTML = `
-        <div class="npc-header">
+        <div class="npc-header" data-toggle-npc="${id}" style="cursor:pointer">
           <div class="npc-sprite">${data.sprite}</div>
           <div class="npc-info">
-            <div class="npc-name">${data.name}</div>
+            <div class="npc-name">${data.name}${lvl > 0 ? ` <span class="affinity-level-badge lv${lvl === 5 ? '-max' : ''}">Lv.${lvl}</span>` : ''}</div>
             <div class="npc-role">${data.role}</div>
+            <div class="affinity-bar-wrap">
+              <div class="affinity-bar-track"><div class="affinity-bar-fill" style="width:${progressPct}%"></div></div>
+              <div class="affinity-hearts-row"><span style="color:var(--gold)">${hearts}</span><span style="color:var(--text3)">${emptyH}</span><span class="affinity-pts-label">${npc.affinity}/15</span></div>
+            </div>
           </div>
-          <div class="npc-affinity">
-            <div class="affinity-label">Affinity</div>
-            <div class="affinity-val">${npc.affinity}</div>
-            <div class="affinity-hearts" style="color:var(--gold)">${hearts}<span style="color:var(--text3)">${emptyH}</span></div>
-          </div>
+          <div class="npc-expand-chevron">${npc.expanded ? '▲' : '▼'}</div>
         </div>
+        ${expandedPanel}
         ${bodyHtml}
       `;
       list.appendChild(card);
     });
+
+  // Bind toggle handlers — use dynamic import to avoid circular static dep
+  list.querySelectorAll('[data-toggle-npc]').forEach(header => {
+    header.addEventListener('click', e => {
+      if (e.target.closest('[data-deliver]')) return;
+      const npcId = header.dataset.toggleNpc;
+      import('./npcs.js').then(({ toggleNpcExpanded }) => toggleNpcExpanded(npcId));
+    });
+  });
 
   updateTownBadge();
 }
