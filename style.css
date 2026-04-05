@@ -448,22 +448,26 @@ main {
 /* ── TOAST ── */
 #toast {
   position: fixed;
-  bottom: calc(var(--tab-h) + 12px);
-  left: 50%;
-  transform: translateX(-50%) translateY(20px);
+  top: 10px;
+  left: 12px;
+  right: 12px;
+  max-width: 340px;
+  transform: translateY(-14px);
   background: var(--card2);
   border: 1.5px solid var(--border);
-  border-radius: 20px;
-  padding: 8px 18px;
+  border-radius: 14px;
+  padding: 8px 14px;
   font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   opacity: 0;
-  transition: opacity 0.25s, transform 0.25s;
+  transition: opacity 0.22s, transform 0.22s;
   z-index: 200;
   pointer-events: none;
 }
-#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.show { opacity: 1; transform: translateY(0); }
 
 /* ── MODAL ── */
 .modal-overlay {
@@ -694,33 +698,138 @@ main {
   box-shadow: 0 0 12px rgba(244,200,66,0.2);
 }
 .npc-card.on-cooldown { opacity: 0.7; }
+.npc-card.maxed { border-color: var(--accent); }
 
 .npc-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   margin-bottom: 10px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
-.npc-sprite { font-size: 36px; flex-shrink: 0; line-height: 1; }
+.npc-header:active { opacity: 0.8; }
+.npc-sprite { font-size: 34px; flex-shrink: 0; line-height: 1; padding-top: 2px; }
 .npc-info   { flex: 1; min-width: 0; }
-.npc-name   { font-weight: 800; font-size: 15px; }
-.npc-role   { font-size: 11px; color: var(--text3); margin-top: 1px; }
+.npc-name   { font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.npc-role   { font-size: 11px; color: var(--text3); margin-top: 1px; margin-bottom: 5px; }
 
-.npc-affinity {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+.affinity-level-badge {
+  font-family: 'Silkscreen', monospace;
+  font-size: 10px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1px 5px;
+  color: var(--gold2);
   flex-shrink: 0;
 }
-.affinity-label {
-  font-size: 10px;
-  color: var(--text3);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.affinity-level-badge.lv-max {
+  background: linear-gradient(135deg, #7c5c00, #b8860b);
+  border-color: var(--gold);
+  color: #fff8dc;
 }
-.affinity-val    { font-family: 'Silkscreen', monospace; font-size: 18px; color: var(--gold2); }
-.affinity-hearts { font-size: 12px; letter-spacing: 1px; }
+
+.affinity-bar-wrap { display: flex; flex-direction: column; gap: 3px; }
+.affinity-bar-track {
+  height: 5px;
+  background: var(--bg3);
+  border-radius: 3px;
+  overflow: hidden;
+  width: 100%;
+}
+.affinity-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--gold));
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+.affinity-hearts-row {
+  font-size: 11px;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.affinity-pts-label {
+  font-family: 'Silkscreen', monospace;
+  font-size: 9px;
+  color: var(--text3);
+  margin-left: 2px;
+}
+
+.npc-expand-chevron {
+  font-size: 11px;
+  color: var(--text3);
+  flex-shrink: 0;
+  padding-top: 4px;
+  padding-left: 2px;
+}
+
+.npc-affinity-panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.npc-story-text {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text2);
+  font-style: italic;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.affinity-bonus-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.affinity-bonus-pip {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--text3);
+  opacity: 0.45;
+  transition: opacity 0.2s;
+}
+.affinity-bonus-pip.reached { color: var(--text2); opacity: 1; }
+.affinity-bonus-pip.current { color: var(--accent2); font-weight: 700; opacity: 1; }
+.pip-level {
+  font-family: 'Silkscreen', monospace;
+  font-size: 9px;
+  background: var(--bg3);
+  border-radius: 4px;
+  padding: 2px 4px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.affinity-bonus-pip.reached .pip-level { background: var(--accent); color: #fff; }
+.affinity-bonus-pip.current .pip-level { background: var(--gold2); color: #000; }
+.pip-text { flex: 1; line-height: 1.4; }
+
+.capstone-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #7c5c00, #c8960b);
+  color: #fff8dc;
+  border-radius: 5px;
+  padding: 1px 6px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+.maxed-msg {
+  font-style: normal !important;
+  color: var(--accent2) !important;
+  text-align: center;
+  font-weight: 700;
+  font-size: 12px !important;
+}
 
 .npc-dialogue {
   background: var(--bg3);
