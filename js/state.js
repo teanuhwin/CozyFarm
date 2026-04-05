@@ -1,12 +1,12 @@
 // ── CONSTANTS ─────────────────────────────────────────────
 
 export const WEATHER_TYPES = {
-  clear:    { id:'clear',    icon:'🌤️',  name:'Clear',        desc:'No special effects',          cls:'',        weight:35 },
+  clear:    { id:'clear',    icon:'🌤️',  name:'Clear',        desc:'No special effects',          cls:'',        weight:30 },
   sunny:    { id:'sunny',    icon:'☀️',   name:'Sunny',        desc:'Crops grow 20% faster',       cls:'sunny',   weight:25 },
   overcast: { id:'overcast', icon:'☁️',   name:'Overcast',     desc:'Crops grow 20% slower',       cls:'overcast',weight:20 },
-  rain:     { id:'rain',     icon:'🌧️',  name:'Rain',         desc:'Plots watered every 5 mins!', cls:'rain',    weight:12 },
-  thunder:  { id:'thunder',  icon:'⛈️',  name:'Thunderstorm', desc:'Zaps 1–5 crops every 5 mins!',cls:'thunder', weight:6  },
-  flood:    { id:'flood',    icon:'🌊',   name:'Flood',        desc:'One row flooded for the hour!',cls:'flood',   weight:2  },
+  rain:     { id:'rain',     icon:'🌧️',  name:'Rain',         desc:'Plots watered every 5 mins!', cls:'rain',    weight:11 },
+  thunder:  { id:'thunder',  icon:'⛈️',  name:'Thunderstorm', desc:'Zaps 1–5 crops every 5 mins!',cls:'thunder', weight:8  },
+  flood:    { id:'flood',    icon:'🌊',   name:'Flood',        desc:'One row flooded for the hour!',cls:'flood',   weight:6  },
 };
 
 export const WEATHER_DURATION_MS  = 60 * 60 * 1000; // 1 hour
