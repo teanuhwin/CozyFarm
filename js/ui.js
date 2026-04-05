@@ -629,9 +629,9 @@ export function tickTownCooldowns() {
 
 // ── LOG TAB ───────────────────────────────────────────────
 export function renderLogTab() {
-  renderAchievements();
   renderStats();
   renderWeatherHistory();
+  renderAchievements();
 }
 
 function renderAchievements() {
@@ -660,14 +660,14 @@ function renderStats() {
   if (!grid) return;
   const s = state.stats || {};
   const items = [
-    { icon:'🌾', label:'Crops Harvested',       val: s.totalHarvests     || 0 },
-    { icon:'🪙', label:'Lifetime Coins',         val: state.lifetimeCoins || 0 },
-    { icon:'💧', label:'Plots Watered',          val: s.totalWatered      || 0 },
-    { icon:'🌿', label:'Plots Fertilized',       val: s.totalFertilized   || 0 },
-    { icon:'🏪', label:'Sell Actions',           val: s.sellActions       || 0 },
-    { icon:'💀', label:'Crops Lost to Weather',  val: s.cropsLostToWeather|| 0 },
-    { icon:'🍄', label:'Truffles Harvested',     val: s.truffleHarvests   || 0 },
-    { icon:'🧤', label:'Gloves Uses',            val: s.glovesUses        || 0 },
+    { icon:'🌾', label:'Crops Harvested',            val: s.totalHarvests     || 0 },
+    { icon:'🪙', label:'Lifetime Coins',              val: state.lifetimeCoins || 0 },
+    { icon:'💧', label:'Manually Watered',            val: s.totalWatered      || 0 },
+    { icon:'🌿', label:'Manually Fertilized',         val: s.totalFertilized   || 0 },
+    { icon:'🏪', label:'Sell Actions',                val: s.sellActions       || 0 },
+    { icon:'💀', label:'Crops Lost to Weather',       val: s.cropsLostToWeather|| 0 },
+    { icon:'🍄', label:'Truffles Harvested',          val: s.truffleHarvests   || 0 },
+    { icon:'🧤', label:'Gloves Uses',                 val: s.glovesUses        || 0 },
   ];
   grid.innerHTML = '';
   items.forEach(item => {
@@ -711,5 +711,134 @@ function renderWeatherHistory() {
       </div>
     `;
     list.appendChild(row);
+  });
+}
+
+// ── MERCHANT UI ───────────────────────────────────────────
+export function updateMerchantUI() {
+  import('./merchants.js').then(M => {
+    const m   = state.merchant;
+    const sun = el('merchant-mochi');
+    const moon= el('merchant-moto');
+    if (!sun || !moon) return;
+
+    // Show/hide icons based on who is active (even if modal is dismissed)
+    sun.style.display  = (m.active === 'mochi') ? 'flex' : 'none';
+    moon.style.display = (m.active === 'moto')  ? 'flex' : 'none';
+
+    // Active effect badge
+    const effBadge = el('merchant-effect-badge');
+    if (effBadge) {
+      const eff = m.effect;
+      const now = Date.now();
+      if (eff && eff.id && (!eff.expiresAt || now < eff.expiresAt)) {
+        const mins = eff.expiresAt ? Math.ceil((eff.expiresAt - now) / 60000) : null;
+        const uses = eff.usesLeft !== undefined ? `${eff.usesLeft} left` : null;
+        const timeStr = uses || (mins !== null ? `${mins}m` : '');
+        effBadge.textContent = `${eff.icon} ${eff.label}${timeStr ? ' · ' + timeStr : ''}`;
+        effBadge.style.display = 'flex';
+      } else {
+        effBadge.style.display = 'none';
+      }
+    }
+
+    // Moto outcome reveal modal
+    const outModal = el('moto-outcome-modal');
+    if (outModal) {
+      if (m.motoOutcome) {
+        const o = m.motoOutcome;
+        el('moto-outcome-icon').textContent  = o.icon;
+        el('moto-outcome-label').textContent = o.label;
+        el('moto-outcome-label').style.color = o.isGood ? 'var(--accent2)' : 'var(--red)';
+        el('moto-outcome-desc').textContent  = o.desc;
+        const flavor = el('moto-outcome-flavor');
+        if (flavor) { flavor.textContent = o.flavor || ''; }
+        outModal.classList.add('open');
+      } else {
+        outModal.classList.remove('open');
+      }
+    }
+  });
+}
+
+export function openMerchantModal(who) {
+  import('./merchants.js').then(M => {
+    const modal = el('merchant-modal');
+    if (!modal) return;
+    const m = state.merchant;
+    if (m.active !== who) return;
+
+    const cost = who === 'mochi' ? M.mochiCostForDisplay() : M.motoCostForDisplay();
+    const canAfford = state.coins >= cost;
+
+    el('merchant-modal-icon').textContent  = who === 'mochi' ? '☀️' : '🌙';
+    el('merchant-modal-name').textContent  = who === 'mochi' ? 'Mochi' : 'Moto';
+    el('merchant-modal-cost').textContent  = `🪙${cost.toLocaleString()}`;
+    el('merchant-modal-cost').style.color  = canAfford ? 'var(--gold2)' : 'var(--red)';
+
+    const greeting = who === 'mochi'
+      ? 'The sun is at its zenith! Would you like to stabilize your yields today?'
+      : "Mochi's scrolls are so… boring. Want to see what happens when you mix Truffle spores with moonbeams?";
+    el('merchant-modal-greeting').textContent = greeting;
+
+    const itemsEl = el('merchant-modal-items');
+    itemsEl.innerHTML = '';
+
+    if (who === 'mochi') {
+      const item = M.MOCHI_ITEMS.find(i => i.id === m.activeItemId);
+      if (item) {
+        const row = document.createElement('div');
+        row.className = 'merchant-item-row';
+        row.innerHTML = `
+          <span class="merchant-item-icon">${item.icon}</span>
+          <div class="merchant-item-info">
+            <div class="merchant-item-name">${item.name}</div>
+            <div class="merchant-item-desc">${item.desc}</div>
+          </div>
+          <button class="btn sm${canAfford ? ' gold' : ''}" data-buy-mochi="${item.id}" ${canAfford ? '' : 'disabled'}>Buy</button>
+        `;
+        itemsEl.appendChild(row);
+      }
+    } else {
+      const riddle = M.MOTO_RIDDLES.find(r => r.id === m.activeRiddleId);
+      if (riddle) {
+        const row = document.createElement('div');
+        row.className = 'merchant-item-row merchant-riddle-row';
+        row.innerHTML = `
+          <span class="merchant-item-icon">🎲</span>
+          <div class="merchant-item-info">
+            <div class="merchant-item-name">${riddle.riddle}</div>
+            <div class="merchant-item-desc" style="color:var(--text3);margin-top:4px;font-style:italic">Something will happen. Could be wonderful. Could be terrible.</div>
+          </div>
+          <button class="btn sm" data-buy-moto="${riddle.id}" ${canAfford ? '' : 'disabled'}>Roll the dice</button>
+        `;
+        itemsEl.appendChild(row);
+      }
+    }
+
+    // Decline button text
+    const declineBtn = el('merchant-decline-btn');
+    if (declineBtn) {
+      declineBtn.textContent = who === 'mochi'
+        ? "Not today. Send Moto."
+        : "Too risky. Send Mochi.";
+    }
+
+    modal.dataset.who = who;
+    modal.classList.add('open');
+
+    // Wire buy buttons
+    itemsEl.querySelectorAll('[data-buy-mochi]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        M.buyMochiItem(btn.dataset.buyMochi);
+        modal.classList.remove('open');
+      });
+    });
+    itemsEl.querySelectorAll('[data-buy-moto]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        M.buyMotoRiddle(btn.dataset.buyMoto);
+        modal.classList.remove('open');
+      });
+    });
   });
 }

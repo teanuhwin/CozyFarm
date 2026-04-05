@@ -1,12 +1,12 @@
 // ── CONSTANTS ─────────────────────────────────────────────
 
 export const WEATHER_TYPES = {
-  clear:    { id:'clear',    icon:'🌤️',  name:'Clear',        desc:'No special effects',          cls:'',        weight:30 },
+  clear:    { id:'clear',    icon:'🌤️',  name:'Clear',        desc:'No special effects',          cls:'',        weight:35 },
   sunny:    { id:'sunny',    icon:'☀️',   name:'Sunny',        desc:'Crops grow 20% faster',       cls:'sunny',   weight:25 },
   overcast: { id:'overcast', icon:'☁️',   name:'Overcast',     desc:'Crops grow 20% slower',       cls:'overcast',weight:20 },
-  rain:     { id:'rain',     icon:'🌧️',  name:'Rain',         desc:'Plots watered every 5 mins!', cls:'rain',    weight:11 },
-  thunder:  { id:'thunder',  icon:'⛈️',  name:'Thunderstorm', desc:'Zaps 1–5 crops every 5 mins!',cls:'thunder', weight:8  },
-  flood:    { id:'flood',    icon:'🌊',   name:'Flood',        desc:'One row flooded for the hour!',cls:'flood',   weight:6  },
+  rain:     { id:'rain',     icon:'🌧️',  name:'Rain',         desc:'Plots watered every 5 mins!', cls:'rain',    weight:12 },
+  thunder:  { id:'thunder',  icon:'⛈️',  name:'Thunderstorm', desc:'Zaps 1–5 crops every 5 mins!',cls:'thunder', weight:6  },
+  flood:    { id:'flood',    icon:'🌊',   name:'Flood',        desc:'One row flooded for the hour!',cls:'flood',   weight:2  },
 };
 
 export const WEATHER_DURATION_MS  = 60 * 60 * 1000; // 1 hour
@@ -43,9 +43,11 @@ export const ACHIEVEMENTS = [
   { id:'first_harvest',   icon:'🌾', name:'First Harvest',   desc:'Harvest your first crop',          check: s => (s.stats.totalHarvests||0) >= 1 },
   { id:'harvest_10',      icon:'🧺', name:'Busy Hands',      desc:'Harvest 10 crops total',           check: s => (s.stats.totalHarvests||0) >= 10 },
   { id:'harvest_100',     icon:'🏆', name:'Century Farmer',  desc:'Harvest 100 crops total',          check: s => (s.stats.totalHarvests||0) >= 100 },
+  { id:'harvest_10000',   icon:'🌾', name:'Legendary Farmer', desc:'Harvest 10,000 crops total',        check: s => (s.stats.totalHarvests||0) >= 10000 },
   { id:'earn_100',        icon:'🪙', name:'Pocket Change',   desc:'Earn 100 coins lifetime',          check: s => (s.lifetimeCoins||0) >= 100 },
   { id:'earn_1000',       icon:'💰', name:'Golden Harvest',  desc:'Earn 1,000 coins lifetime',        check: s => (s.lifetimeCoins||0) >= 1000 },
   { id:'earn_10000',      icon:'🤑', name:'Truffle Tycoon',  desc:'Earn 10,000 coins lifetime',       check: s => (s.lifetimeCoins||0) >= 10000 },
+  { id:'earn_1000000',    icon:'💎', name:'Millionaire',      desc:'Earn 1,000,000 coins lifetime',     check: s => (s.lifetimeCoins||0) >= 1000000 },
   { id:'survive_thunder', icon:'⛈️', name:'Storm Survivor',  desc:'Survive a thunderstorm',           check: s => (s.stats.thunderSurvived||0) >= 1 },
   { id:'survive_flood',   icon:'🌊', name:'Flood Survivor',  desc:'Survive a flood',                  check: s => (s.stats.floodSurvived||0) >= 1 },
   { id:'rain_watered',    icon:'🌧️', name:'Free Water',      desc:'Have plots watered by rain',       check: s => (s.stats.rainWateredPlots||0) >= 1 },
@@ -107,6 +109,16 @@ export const state = {
   begTaps: 0,
   npcs: {},
   unlockedNpcs: ['kimchi'],
+  merchant: {
+    active: null,        // null | 'mochi' | 'moto'
+    arrivedAt: 0,        // when current merchant arrived
+    nextVisitAt: 0,      // when next visit can begin
+    nextMerchant: null,  // forced next merchant after decline/auto-dismiss
+    effect: null,        // active effect object
+    motoOutcome: null,   // revealed after Moto purchase
+    activeItemId: null,  // which Mochi item is offered this visit
+    activeRiddleId: null,// which Moto riddle is offered this visit
+  },
 };
 
 // settings lives separately from game state (different localStorage key)
@@ -235,4 +247,9 @@ export function migrateState() {
     if (p.watered   === undefined) p.watered   = false;
     if (p.fertilized === undefined) p.fertilized = false;
   });
+  // Migrate merchant state
+  if (!state.merchant) state.merchant = { active: null, arrivedAt: 0, nextVisitAt: 0, nextMerchant: null, effect: null, motoOutcome: null, activeItemId: null, activeRiddleId: null };
+  if (state.merchant.motoOutcome    === undefined) state.merchant.motoOutcome    = null;
+  if (state.merchant.activeItemId   === undefined) state.merchant.activeItemId   = null;
+  if (state.merchant.activeRiddleId === undefined) state.merchant.activeRiddleId = null;
 }

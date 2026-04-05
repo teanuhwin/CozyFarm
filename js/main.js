@@ -27,17 +27,26 @@ import {
 } from './npcs.js';
 
 import {
+  tickMerchants, isMerchantUnlocked,
+  getMerchantSellMult, isBarnWeightless, getMiracleYield,
+  isTimerFrozen, isBarrenEarth, isPhotosynthActive, getStickyDelay,
+  consumeTripleSellUse, dismissMerchant, declineMerchant,
+} from './merchants.js';
+
+import {
   el, toast, applyTheme, switchTab,
   renderGrid, renderPlot, updateHeader, updateFarmToolbar,
   updateHint, updateBegZone, updateShopUI,
   updateWeatherBanner, updateTownVisibility, updateTownBadge,
   renderTownTab, tickTownCooldowns, renderLogTab,
+  updateMerchantUI, openMerchantModal,
 } from './ui.js';
 
 // ── INTERACTION STATE ─────────────────────────────────────
 let selectedCrop = 'wheat';
 let selectedTool = 'plant'; // 'plant' | 'water' | 'fert'
 let notifiedPlots = new Set();
+let lastHarvestTime = 0; // for Moto sticky fingers throttle
 
 // Helper to get affinity level for an NPC without importing affinityLevel
 function affinityLevelFor(npcId) {
@@ -151,6 +160,15 @@ function showPlotOptions(idx) {
 }
 
 function harvestPlot(idx) {
+  // Moto sticky fingers: throttle harvests to 1 per 10s
+  const stickyDelay = getStickyDelay();
+  if (stickyDelay > 0 && Date.now() - lastHarvestTime < stickyDelay) {
+    const remaining = Math.ceil((stickyDelay - (Date.now() - lastHarvestTime)) / 1000);
+    toast(`🐌 Sticky Fingers! Wait ${remaining}s before next harvest.`);
+    return;
+  }
+  lastHarvestTime = Date.now();
+
   const plot    = state.plots[idx];
   const crop    = CROPS[plot.crop || 'wheat'];
   const cropKey = plot.crop || 'wheat';
@@ -162,6 +180,10 @@ function harvestPlot(idx) {
     const fertBonus = getFertYield();
     yieldAmt += (fertBonus !== null ? fertBonus : FERT_YIELD);
   }
+
+  // Moto miracle harvest: +5 yield (overrides fertilizer, applied last)
+  const miracleBonus = getMiracleYield();
+  if (miracleBonus > 0) yieldAmt += miracleBonus;
 
   // Kalbi: wheat yield bonus
   if (cropKey === 'wheat') {
@@ -177,12 +199,13 @@ function harvestPlot(idx) {
   // Ellie: truffle min yield
   if (cropKey === 'truffle') yieldAmt = Math.max(getTruffleMinYield(), yieldAmt);
 
-  const space = barnCap() - totalBarnContents();
-  if (space <= 0) { toast('🏚️ Barn full! Sell some crops first.'); return; }
+  const weightless = isBarnWeightless();
+  const space = weightless ? Infinity : (barnCap() - totalBarnContents());
+  if (!weightless && space <= 0) { toast('🏚️ Barn full! Sell some crops first.'); return; }
 
   // Partial harvest: take only what fits, leave the plot as ready if there's more
-  const partialHarvest = yieldAmt > space;
-  const actualHarvest = Math.min(yieldAmt, space);
+  const partialHarvest = !weightless && yieldAmt > space;
+  const actualHarvest = weightless ? yieldAmt : Math.min(yieldAmt, space);
   yieldAmt = actualHarvest;
 
   state[cropKey] = (state[cropKey] || 0) + yieldAmt;
@@ -212,7 +235,7 @@ function harvestPlot(idx) {
   // Gloves seed-recovery
   let seedReturned = false;
   const curGlovesUses = getGlovesUses();
-  const glovesChance  = getGlovesChance() !== null ? getGlovesChance() : GLOVES_CHANCE;
+  const glovesChance  = isBarrenEarth() ? 0 : (getGlovesChance() !== null ? getGlovesChance() : GLOVES_CHANCE);
   const glovesMax     = curGlovesUses === Infinity ? Infinity : (curGlovesUses !== null ? curGlovesUses : GLOVES_USES);
 
   if (state.glovesDurability > 0) {
@@ -269,6 +292,14 @@ function sellAllCrops() {
       if (k === 'corn')    price = Math.round(price * getCornSellMult());
       if (k === 'pumpkin') price = Math.round(price * getPumpkinSellMult());
       if (k === 'truffle') price = getTruffleSellPrice(price);
+      // Merchant flat multiplier (Helios or Triple Sell) applied last
+      const mMult = getMerchantSellMult();
+      if (mMult !== 1.0) {
+        const before = state[k];
+        price = Math.round(price * mMult);
+        // Triple sell consumes uses per item sold
+        if (mMult === 3.0) for (let _i = 0; _i < before; _i++) consumeTripleSellUse();
+      }
       earned += state[k] * price;
       state[k] = 0;
     }
@@ -295,6 +326,10 @@ function sellCrop(cropKey, amount) {
   if (cropKey === 'corn')    basePrice = Math.round(basePrice * getCornSellMult());
   if (cropKey === 'pumpkin') basePrice = Math.round(basePrice * getPumpkinSellMult());
   if (cropKey === 'truffle') basePrice = getTruffleSellPrice(basePrice);
+  // Merchant flat multiplier applied last
+  const mMult = getMerchantSellMult();
+  if (mMult === 3.0) for (let _i = 0; _i < qty; _i++) consumeTripleSellUse();
+  basePrice = Math.round(basePrice * getMerchantSellMult());
 
   const earned = qty * basePrice;
   state[cropKey]     -= qty;
@@ -483,7 +518,11 @@ function onWeatherStart(id) {
   } else if (id === 'sunny') {
     toast('☀️ Sunny! Crops growing 20% faster all hour.');
   } else if (id === 'overcast') {
-    toast('☁️ Overcast. Crops growing 20% slower all hour.');
+    if (isPhotosynthActive()) {
+      toast('☁️ Overcast — blocked by Photosynthesis! No slowdown.');
+    } else {
+      toast('☁️ Overcast. Crops growing 20% slower all hour.');
+    }
   } else {
     toast('🌤️ Skies have cleared up.');
   }
@@ -496,13 +535,14 @@ function doRainWater() {
     if (p.state === 'planted' && !p.watered) { p.watered = true; count++; }
   });
   state.weather.lastRainAt = Date.now();
+  state.stats.rainWateredPlots = (state.stats.rainWateredPlots || 0) + count;
   if (count > 0) {
-    state.stats.rainWateredPlots = (state.stats.rainWateredPlots || 0) + count;
     toast(`🌧️ Rain watered ${count} plot${count > 1 ? 's' : ''}!`);
-    renderGrid(); checkAchievements();
+    renderGrid();
   } else {
     toast('🌧️ Rain — all plots already watered!');
   }
+  checkAchievements(); // always check — catches first-ever rain-watered event
 }
 
 // ── Recurring thunder: zap 1–5 random plots ──────────────
@@ -536,6 +576,11 @@ function doThunderZap() {
 
 // ── Flood start: wipe a row and lock it ──────────────────
 function doFloodStart() {
+  if (isPhotosynthActive()) {
+    toast('🌿 Photosynthesis blocked the flood!');
+    state.weather.floodedRow = -1;
+    return;
+  }
   const wheatImmune = getWheatWeatherImmune();
   // Pick any row (not just occupied) — the row gets locked either way
   const row = Math.floor(Math.random() * state.rows);
@@ -608,6 +653,7 @@ function tickWeather() {
 function tick() {
   tickWeather();
   tickNpcs();
+  tickMerchants();
   tickTownCooldowns();
 
   const weatherMult = currentWeatherMultiplier();
@@ -618,6 +664,9 @@ function tick() {
   state.plots.forEach((plot, i) => {
     if (plot.state === 'flooded') return; // locked during flood
     if (plot.state === 'planted') {
+      // Moto frozen soil: skip timer advancement
+      if (isTimerFrozen()) { renderPlot(i); return; }
+
       const crop = CROPS[plot.crop || 'wheat'];
       const waterMult = plot.watered ? (getWaterSpeedup() ?? WATER_SPEEDUP) : 1.0;
       let growMs = crop.growMs * waterMult;
@@ -628,7 +677,9 @@ function tick() {
       if (plot.crop === 'pumpkin' && isBadWeather) growMs *= getPumpkinWeatherMult();
       if (plot.crop === 'wheat' && affinityLevelFor('kalbi') >= 5) growMs *= 0.50;
 
-      growMs *= weatherMult;
+      // Mochi photosynth blocks overcast slowdown (flood already blocked via plot state)
+      const effWeatherMult = (isPhotosynthActive() && weatherMult > 1.0) ? 1.0 : weatherMult;
+      growMs *= effWeatherMult;
 
       if (Date.now() - plot.plantedAt >= growMs) {
         plot.state = 'ready';
@@ -688,6 +739,7 @@ function doReset() {
   updateBegZone();
   updateTownVisibility();
   updateTownBadge();
+  updateMerchantUI();
   closeModal();
   toast('🌱 Farm reset! Starting fresh.');
 }
@@ -771,6 +823,29 @@ function wireEvents() {
   document.querySelector('[data-action="confirm-reset"]').addEventListener('click', confirmReset);
   document.querySelector('[data-action="close-modal"]').addEventListener('click',   closeModal);
   document.querySelector('[data-action="do-reset"]').addEventListener('click',      doReset);
+
+  // Merchant icons → open modal
+  document.getElementById('merchant-mochi').addEventListener('click', () => openMerchantModal('mochi'));
+  document.getElementById('merchant-moto').addEventListener('click',  () => openMerchantModal('moto'));
+
+  // Merchant modal buttons
+  document.getElementById('merchant-dismiss-btn').addEventListener('click', () => {
+    el('merchant-modal').classList.remove('open');
+    dismissMerchant();
+  });
+  document.getElementById('merchant-decline-btn').addEventListener('click', () => {
+    el('merchant-modal').classList.remove('open');
+    declineMerchant();
+  });
+  document.getElementById('merchant-modal-close').addEventListener('click', () => {
+    el('merchant-modal').classList.remove('open');
+    dismissMerchant();
+  });
+
+  // Moto outcome modal dismiss
+  document.getElementById('moto-outcome-close').addEventListener('click', () => {
+    import('./merchants.js').then(({ clearMotoOutcome }) => clearMotoOutcome());
+  });
 }
 
 // ── INIT ──────────────────────────────────────────────────
@@ -806,6 +881,7 @@ function init() {
   updateTownVisibility();
   updateTownBadge();
   updateWeatherBanner();
+  updateMerchantUI();
   checkAchievements();
 
   setInterval(tick, 1000);
