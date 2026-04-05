@@ -67,6 +67,12 @@
       </button>
     </div>
 
+    <div class="merchant-bar">
+      <button id="merchant-mochi" class="merchant-icon mochi-icon" style="display:none" title="Mochi is visiting!">☀️</button>
+      <div id="merchant-effect-badge" class="merchant-effect-badge" style="display:none"></div>
+      <button id="merchant-moto" class="merchant-icon moto-icon" style="display:none" title="Moto is visiting!">🌙</button>
+    </div>
+
     <div style="text-align:center">
       <div class="grid-size-badge" id="grid-size-badge">2 × 2</div>
     </div>
@@ -322,17 +328,17 @@
 
   <!-- ── LOG TAB ── -->
   <div id="tab-log" class="tab-panel">
-    <div class="section-title">
-      🏆 Achievements
-      <span id="achievement-progress" style="font-size:10px;color:var(--text3);margin-left:4px"></span>
-    </div>
-    <div class="achievement-grid" id="achievement-grid"></div>
-
     <div class="section-title">📊 Stats</div>
     <div class="stats-grid" id="stats-grid"></div>
 
     <div class="section-title">🌦️ Weather History</div>
     <div id="weather-history-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
+
+    <div class="section-title">
+      🏆 Achievements
+      <span id="achievement-progress" style="font-size:10px;color:var(--text3);margin-left:4px"></span>
+    </div>
+    <div class="achievement-grid" id="achievement-grid"></div>
   </div>
 
   <!-- ── TOWN TAB ── -->
@@ -393,7 +399,7 @@
       </div>
     </div>
 
-    <p class="empty-hint" style="margin-top:32px;font-size:11px;">🌾 Cozy Farm v3.2 · Saves locally in your browser</p>
+    <p class="empty-hint" style="margin-top:32px;font-size:11px;">🌾 Cozy Farm v3.0 · Saves locally in your browser</p>
   </div>
 
 </main>
@@ -420,6 +426,37 @@
 
 <!-- Toast notification -->
 <div id="toast"></div>
+
+<!-- Merchant modal -->
+<div class="modal-overlay" id="merchant-modal">
+  <div class="modal-box merchant-modal-box">
+    <button class="modal-close-x" id="merchant-modal-close">✕</button>
+    <div class="merchant-modal-header">
+      <span id="merchant-modal-icon" style="font-size:32px">☀️</span>
+      <div>
+        <div class="merchant-modal-name" id="merchant-modal-name">Mochi</div>
+        <div class="merchant-modal-cost" id="merchant-modal-cost">🪙5,000</div>
+      </div>
+    </div>
+    <div class="merchant-modal-greeting" id="merchant-modal-greeting"></div>
+    <div id="merchant-modal-items" class="merchant-modal-items"></div>
+    <div class="merchant-modal-footer">
+      <button class="btn sm" id="merchant-dismiss-btn">Save for later</button>
+      <button class="btn sm danger" id="merchant-decline-btn">Send sibling instead</button>
+    </div>
+  </div>
+</div>
+
+<!-- Moto outcome modal -->
+<div class="modal-overlay" id="moto-outcome-modal">
+  <div class="modal-box moto-outcome-box">
+    <div id="moto-outcome-icon" style="font-size:48px;text-align:center;margin-bottom:8px">🌟</div>
+    <div id="moto-outcome-flavor" style="font-size:11px;color:var(--text3);text-align:center;font-style:italic;margin-bottom:8px"></div>
+    <div id="moto-outcome-label" style="font-size:18px;font-weight:800;text-align:center;margin-bottom:6px"></div>
+    <div id="moto-outcome-desc" style="font-size:13px;color:var(--text2);text-align:center;line-height:1.5;margin-bottom:16px"></div>
+    <button class="btn gold" id="moto-outcome-close" style="width:100%">Got it!</button>
+  </div>
+</div>
 
 <!-- Reset confirm modal -->
 <div class="modal-overlay" id="reset-modal">
