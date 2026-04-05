@@ -104,12 +104,12 @@
       <div class="shop-icon">🌾</div>
       <div class="shop-info">
         <div class="shop-name">Sell Wheat</div>
-        <div class="shop-desc">10🪙 each</div>
+        <div class="shop-desc" id="wheat-sell-desc">10🪙 each</div>
         <div class="cost-tag" style="margin-top:4px" id="wheat-barn-count">0 in barn</div>
       </div>
       <div class="shop-actions">
         <button class="btn gold sm" id="sell-wheat-all-btn">Sell All</button>
-        <button class="btn sm"      id="sell-wheat1-btn">Sell 1 <span class="cost-tag">🪙10</span></button>
+        <button class="btn sm"      id="sell-wheat1-btn">Sell 1 <span class="cost-tag" id="wheat-sell-price">🪙10</span></button>
       </div>
     </div>
 
@@ -117,12 +117,12 @@
       <div class="shop-icon">🌽</div>
       <div class="shop-info">
         <div class="shop-name">Sell Corn</div>
-        <div class="shop-desc">40🪙 each</div>
+        <div class="shop-desc" id="corn-sell-desc">40🪙 each</div>
         <div class="cost-tag" style="margin-top:4px" id="corn-barn-count">0 in barn</div>
       </div>
       <div class="shop-actions">
         <button class="btn gold sm" id="sell-corn-all-btn">Sell All</button>
-        <button class="btn sm"      id="sell-corn1-btn">Sell 1 <span class="cost-tag">🪙40</span></button>
+        <button class="btn sm"      id="sell-corn1-btn">Sell 1 <span class="cost-tag" id="corn-sell-price">🪙40</span></button>
       </div>
     </div>
 
@@ -130,12 +130,12 @@
       <div class="shop-icon">🎃</div>
       <div class="shop-info">
         <div class="shop-name">Sell Pumpkin</div>
-        <div class="shop-desc">80🪙 each</div>
+        <div class="shop-desc" id="pumpkin-sell-desc">80🪙 each</div>
         <div class="cost-tag" style="margin-top:4px" id="pumpkin-barn-count">0 in barn</div>
       </div>
       <div class="shop-actions">
         <button class="btn gold sm" id="sell-pumpkin-all-btn">Sell All</button>
-        <button class="btn sm"      id="sell-pumpkin1-btn">Sell 1 <span class="cost-tag">🪙80</span></button>
+        <button class="btn sm"      id="sell-pumpkin1-btn">Sell 1 <span class="cost-tag" id="pumpkin-sell-price">🪙80</span></button>
       </div>
     </div>
 
@@ -143,12 +143,12 @@
       <div class="shop-icon">🍄</div>
       <div class="shop-info">
         <div class="shop-name">Sell Truffle</div>
-        <div class="shop-desc">220🪙 each</div>
+        <div class="shop-desc" id="truffle-sell-desc">220🪙 each</div>
         <div class="cost-tag" style="margin-top:4px" id="truffle-barn-count">0 in barn</div>
       </div>
       <div class="shop-actions">
         <button class="btn gold sm" id="sell-truffle-all-btn">Sell All</button>
-        <button class="btn sm"      id="sell-truffle1-btn">Sell 1 <span class="cost-tag">🪙220</span></button>
+        <button class="btn sm"      id="sell-truffle1-btn">Sell 1 <span class="cost-tag" id="truffle-sell-price">🪙220</span></button>
       </div>
     </div>
 
@@ -159,7 +159,7 @@
       <div class="shop-icon seed-icon">🌾<span class="seed-badge">🌱</span></div>
       <div class="shop-info">
         <div class="shop-name">Wheat Seeds</div>
-        <div class="shop-desc">Grows in 2 min · Sells for 10🪙</div>
+        <div class="shop-desc" id="wheat-seed-desc">Grows in 2 min · Sells for 10🪙</div>
         <div class="cost-tag" style="margin-top:4px" id="wheat-seed-count">0 owned</div>
       </div>
       <div class="shop-actions">
@@ -173,7 +173,7 @@
       <div class="shop-icon seed-icon">🌽<span class="seed-badge">🌱</span></div>
       <div class="shop-info">
         <div class="shop-name">Corn Seeds</div>
-        <div class="shop-desc">Grows in 8 min · Sells for 40🪙</div>
+        <div class="shop-desc" id="corn-seed-desc">Grows in 8 min · Sells for 40🪙</div>
         <div class="cost-tag" style="margin-top:4px" id="corn-seed-count">0 owned</div>
         <div id="corn-unlock-msg" style="font-size:11px;color:var(--text3);margin-top:4px">🔒 Earn 200🪙 lifetime to unlock</div>
       </div>
@@ -188,7 +188,7 @@
       <div class="shop-icon seed-icon">🎃<span class="seed-badge">🌱</span></div>
       <div class="shop-info">
         <div class="shop-name">Pumpkin Seeds</div>
-        <div class="shop-desc">Grows in 15 min · Sells for 80🪙</div>
+        <div class="shop-desc" id="pumpkin-seed-desc">Grows in 15 min · Sells for 80🪙</div>
         <div class="cost-tag" style="margin-top:4px" id="pumpkin-seed-count">0 owned</div>
         <div id="pumpkin-unlock-msg" style="font-size:11px;color:var(--text3);margin-top:4px">🔒 Earn 500🪙 lifetime to unlock</div>
       </div>
@@ -203,7 +203,7 @@
       <div class="shop-icon seed-icon">🍄<span class="seed-badge">🌱</span></div>
       <div class="shop-info">
         <div class="shop-name">Truffle Seeds</div>
-        <div class="shop-desc">Grows in 45 min · Sells for 220🪙</div>
+        <div class="shop-desc" id="truffle-seed-desc">Grows in 45 min · Sells for 220🪙</div>
         <div class="cost-tag" style="margin-top:4px" id="truffle-seed-count">0 owned</div>
         <div id="truffle-unlock-msg" style="font-size:11px;color:var(--text3);margin-top:4px">🔒 Earn 1500🪙 lifetime to unlock</div>
       </div>
@@ -220,7 +220,7 @@
       <div class="shop-icon">💧</div>
       <div class="shop-info">
         <div class="shop-name">Water</div>
-        <div class="shop-desc">Apply to one growing plot · 35% faster grow</div>
+        <div class="shop-desc" id="water-desc">Apply to one growing plot · 35% faster grow</div>
         <div class="cost-tag" style="margin-top:4px" id="water-count">0 owned</div>
       </div>
       <div class="shop-actions">
@@ -233,10 +233,10 @@
       <div class="shop-icon">🚿</div>
       <div class="shop-info">
         <div class="shop-name">Water Hose</div>
-        <div class="shop-desc">Waters all growing plots instantly · 35% faster each</div>
+        <div class="shop-desc" id="hose-desc">Waters all growing plots instantly · 35% faster</div>
       </div>
       <div class="shop-actions">
-        <button class="btn sm" id="buy-hose-btn">Use <span class="cost-tag">🪙200</span></button>
+        <button class="btn sm" id="buy-hose-btn">Use <span class="cost-tag" id="hose-cost-tag">🪙200</span></button>
       </div>
     </div>
 
@@ -244,7 +244,7 @@
       <div class="shop-icon">🌿</div>
       <div class="shop-info">
         <div class="shop-name">Fertilizer</div>
-        <div class="shop-desc">Apply to one growing plot · +2 yield on harvest</div>
+        <div class="shop-desc" id="fert-desc">Apply to one growing plot · +2 yield on harvest</div>
         <div class="cost-tag" style="margin-top:4px" id="fert-count">0 owned</div>
       </div>
       <div class="shop-actions">
@@ -257,10 +257,10 @@
       <div class="shop-icon">🧺</div>
       <div class="shop-info">
         <div class="shop-name">Big Fertilizer</div>
-        <div class="shop-desc">Fertilizes all growing plots instantly · +2 yield each</div>
+        <div class="shop-desc" id="bigfert-desc">Fertilizes all growing plots · +2 yield each</div>
       </div>
       <div class="shop-actions">
-        <button class="btn sm" id="buy-bigfert-btn">Use <span class="cost-tag">🪙280</span></button>
+        <button class="btn sm" id="buy-bigfert-btn">Use <span class="cost-tag" id="bigfert-cost-tag">🪙280</span></button>
       </div>
     </div>
 
@@ -268,7 +268,7 @@
       <div class="shop-icon">🧤</div>
       <div class="shop-info">
         <div class="shop-name">Gloves</div>
-        <div class="shop-desc">60% chance to recover a seed on harvest · 20 uses</div>
+        <div class="shop-desc" id="gloves-desc">60% chance to recover a seed on harvest · 20 uses</div>
         <div class="cost-tag" style="margin-top:4px" id="gloves-status">Not equipped</div>
       </div>
       <div class="shop-actions">
