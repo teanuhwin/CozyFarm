@@ -4,9 +4,9 @@ export const WEATHER_TYPES = {
   clear:    { id:'clear',    icon:'🌤️',  name:'Clear',        desc:'No special effects',          cls:'',        weight:35 },
   sunny:    { id:'sunny',    icon:'☀️',   name:'Sunny',        desc:'Crops grow 20% faster',       cls:'sunny',   weight:25 },
   overcast: { id:'overcast', icon:'☁️',   name:'Overcast',     desc:'Crops grow 20% slower',       cls:'overcast',weight:20 },
-  rain:     { id:'rain',     icon:'🌧️',  name:'Rain',         desc:'All plots watered for free!', cls:'rain',    weight:12 },
-  thunder:  { id:'thunder',  icon:'⛈️',  name:'Thunderstorm', desc:'1–5 crops may be zapped!',    cls:'thunder', weight:6  },
-  flood:    { id:'flood',    icon:'🌊',   name:'Flood',        desc:'One row of crops destroyed!', cls:'flood',   weight:2  },
+  rain:     { id:'rain',     icon:'🌧️',  name:'Rain',         desc:'Plots watered every 5 mins!', cls:'rain',    weight:12 },
+  thunder:  { id:'thunder',  icon:'⛈️',  name:'Thunderstorm', desc:'Zaps 1–5 crops every 5 mins!',cls:'thunder', weight:6  },
+  flood:    { id:'flood',    icon:'🌊',   name:'Flood',        desc:'One row flooded for the hour!',cls:'flood',   weight:2  },
 };
 
 export const WEATHER_DURATION_MS  = 60 * 60 * 1000; // 1 hour
@@ -95,7 +95,7 @@ export const state = {
   rows: 2, cols: 2,
   rowExpands: 0, colExpands: 0,
   plots: [],
-  weather: { current: 'clear', changedAt: Date.now() },
+  weather: { current: 'clear', changedAt: Date.now(), lastRainAt: 0, lastThunderAt: 0, floodedRow: -1 },
   unlockedAchievements: [],
   stats: {
     totalHarvests: 0, wheatHarvests: 0, totalWatered: 0, totalFertilized: 0,
@@ -218,7 +218,10 @@ export function migrateState() {
   if (!state.truffle)           state.truffle           = 0;
   if (!state.barnLevel)         state.barnLevel         = 0;
   if (!state.lifetimeCoins)     state.lifetimeCoins     = 0;
-  if (!state.weather)           state.weather           = { current: 'clear', changedAt: Date.now() };
+  if (!state.weather)           state.weather           = { current: 'clear', changedAt: Date.now(), lastRainAt: 0, lastThunderAt: 0, floodedRow: -1 };
+  if (state.weather.lastRainAt    === undefined) state.weather.lastRainAt    = 0;
+  if (state.weather.lastThunderAt === undefined) state.weather.lastThunderAt = 0;
+  if (state.weather.floodedRow    === undefined) state.weather.floodedRow    = -1;
   if (!state.unlockedAchievements) state.unlockedAchievements = [];
   if (!state.stats)             state.stats             = {};
   if (!state.stats.weatherCounts)  state.stats.weatherCounts  = {};

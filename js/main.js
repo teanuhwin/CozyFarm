@@ -61,6 +61,7 @@ function clickPlot(idx) {
   const plot = state.plots[idx];
 
   if (selectedTool === 'water') {
+    if (plot.state === 'flooded') { toast('🌊 This plot is flooded!'); return; }
     if (plot.state === 'ready') { harvestPlot(idx); return; }
     if (plot.state !== 'planted') { toast('Plant a crop first!'); return; }
     if (plot.watered) { toast('Already watered!'); return; }
@@ -79,6 +80,7 @@ function clickPlot(idx) {
   }
 
   if (selectedTool === 'fert') {
+    if (plot.state === 'flooded') { toast('🌊 This plot is flooded!'); return; }
     if (plot.state === 'ready') { harvestPlot(idx); return; }
     if (plot.state !== 'planted') { toast('Plant a crop first!'); return; }
     if (plot.fertilized) { toast('Already fertilized!'); return; }
@@ -93,6 +95,12 @@ function clickPlot(idx) {
     updateFarmToolbar(selectedCrop, selectedTool);
     toast('🌿 Fertilized! Extra yield on harvest.');
     checkAchievements();
+    return;
+  }
+
+  // Flooded plots are uninteractable
+  if (plot.state === 'flooded') {
+    toast('🌊 This plot is flooded! Wait for the flood to pass.');
     return;
   }
 
@@ -459,99 +467,140 @@ function checkAchievements() {
 }
 
 // ── WEATHER ───────────────────────────────────────────────
-function applyWeatherEffects(newWeatherId) {
+const WEATHER_EVENT_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+// ── Called once when weather first changes ────────────────
+function onWeatherStart(id) {
   if (!state.stats.weatherCounts) state.stats.weatherCounts = {};
-  state.stats.weatherCounts[newWeatherId] = (state.stats.weatherCounts[newWeatherId] || 0) + 1;
+  state.stats.weatherCounts[id] = (state.stats.weatherCounts[id] || 0) + 1;
 
-  if (newWeatherId === 'rain') {
-    let count = 0;
-    state.plots.forEach(p => {
-      if (p.state === 'planted' && !p.watered) { p.watered = true; count++; }
-    });
-    if (count > 0) {
-      state.stats.rainWateredPlots = (state.stats.rainWateredPlots || 0) + count;
-      toast(`🌧️ Rain! ${count} plot${count > 1 ? 's' : ''} watered for free!`);
-      renderGrid(); checkAchievements();
-    } else {
-      toast("🌧️ It's raining! (All plots already watered)");
-    }
-
-  } else if (newWeatherId === 'thunder') {
-    // Kalbi L5: wheat is immune to weather destruction
-    const wheatImmune = getWheatWeatherImmune();
-    const occupied = state.plots.map((p, i) => ({ p, i })).filter(({ p }) => p.state !== 'empty' && !(wheatImmune && p.crop === 'wheat'));
-    if (occupied.length > 0) {
-      const zapCount = Math.min(occupied.length, Math.floor(Math.random() * 5) + 1);
-      for (let i = occupied.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [occupied[i], occupied[j]] = [occupied[j], occupied[i]];
-      }
-      occupied.slice(0, zapCount).forEach(({ p, i }) => {
-        p.state = 'empty'; p.crop = null; p.plantedAt = null; p.watered = false; p.fertilized = false;
-        notifiedPlots.delete(i);
-      });
-      state.stats.cropsLostToWeather = (state.stats.cropsLostToWeather || 0) + zapCount;
-      state.stats.thunderSurvived    = (state.stats.thunderSurvived    || 0) + 1;
-      const immuneMsg = wheatImmune ? ' (Wheat protected by Kalbi!)' : '';
-      toast(`⛈️ Thunderstorm! ${zapCount} crop${zapCount > 1 ? 's were' : ' was'} zapped! 💀${immuneMsg}`);
-      renderGrid(); checkAchievements();
-    } else {
-      state.stats.thunderSurvived = (state.stats.thunderSurvived || 0) + 1;
-      toast('⛈️ Thunderstorm! (Nothing to zap this time)');
-      checkAchievements();
-    }
-
-  } else if (newWeatherId === 'flood') {
-    const wheatImmune = getWheatWeatherImmune();
-    const occupiedRows = [];
-    for (let r = 0; r < state.rows; r++) {
-      for (let c = 0; c < state.cols; c++) {
-        const idx = r * state.cols + c;
-        const p = state.plots[idx];
-        if (p && p.state !== 'empty' && !(wheatImmune && p.crop === 'wheat') && !occupiedRows.includes(r)) {
-          occupiedRows.push(r);
-        }
-      }
-    }
-    if (occupiedRows.length > 0) {
-      const row = occupiedRows[Math.floor(Math.random() * occupiedRows.length)];
-      let lost  = 0;
-      for (let c = 0; c < state.cols; c++) {
-        const idx = row * state.cols + c;
-        const p = state.plots[idx];
-        if (p && p.state !== 'empty' && !(wheatImmune && p.crop === 'wheat')) {
-          state.plots[idx] = { state:'empty', crop:null, plantedAt:null, watered:false, fertilized:false };
-          notifiedPlots.delete(idx);
-          lost++;
-        }
-      }
-      state.stats.cropsLostToWeather = (state.stats.cropsLostToWeather || 0) + lost;
-      state.stats.floodSurvived      = (state.stats.floodSurvived      || 0) + 1;
-      const immuneMsg = wheatImmune ? " (Wheat survived — Kalbi's blessing!)" : '';
-      toast(`🌊 Flood! Row ${row + 1} hit! (${lost} crop${lost > 1 ? 's' : ''} lost)${immuneMsg}`);
-      renderGrid(); checkAchievements();
-    } else {
-      state.stats.floodSurvived = (state.stats.floodSurvived || 0) + 1;
-      toast('🌊 Flood! (No crops to destroy this time)');
-      checkAchievements();
-    }
-
-  } else if (newWeatherId === 'sunny')    { toast('☀️ Sunny! Crops are growing 20% faster.');
-  } else if (newWeatherId === 'overcast') { toast('☁️ Overcast. Crops are growing 20% slower.');
-  } else                                   { toast('🌤️ Skies have cleared up.');
+  if (id === 'rain') {
+    doRainWater();
+  } else if (id === 'thunder') {
+    doThunderZap();
+  } else if (id === 'flood') {
+    doFloodStart();
+  } else if (id === 'sunny') {
+    toast('☀️ Sunny! Crops growing 20% faster all hour.');
+  } else if (id === 'overcast') {
+    toast('☁️ Overcast. Crops growing 20% slower all hour.');
+  } else {
+    toast('🌤️ Skies have cleared up.');
   }
 }
 
-function tickWeather() {
-  if (!state.weather) state.weather = { current: 'clear', changedAt: Date.now() };
-  const elapsed = Date.now() - state.weather.changedAt;
-  if (elapsed >= WEATHER_DURATION_MS) {
-    const newW = pickWeather();
-    state.weather.current   = newW;
-    state.weather.changedAt = Date.now();
-    saveState();
-    applyWeatherEffects(newW);
+// ── Recurring rain: water all unwatered plots ─────────────
+function doRainWater() {
+  let count = 0;
+  state.plots.forEach(p => {
+    if (p.state === 'planted' && !p.watered) { p.watered = true; count++; }
+  });
+  state.weather.lastRainAt = Date.now();
+  if (count > 0) {
+    state.stats.rainWateredPlots = (state.stats.rainWateredPlots || 0) + count;
+    toast(`🌧️ Rain watered ${count} plot${count > 1 ? 's' : ''}!`);
+    renderGrid(); checkAchievements();
+  } else {
+    toast('🌧️ Rain — all plots already watered!');
   }
+}
+
+// ── Recurring thunder: zap 1–5 random plots ──────────────
+function doThunderZap() {
+  const wheatImmune = getWheatWeatherImmune();
+  const occupied = state.plots
+    .map((p, i) => ({ p, i }))
+    .filter(({ p }) => p.state !== 'empty' && !(wheatImmune && p.crop === 'wheat'));
+  state.weather.lastThunderAt = Date.now();
+  if (occupied.length > 0) {
+    const zapCount = Math.min(occupied.length, Math.floor(Math.random() * 5) + 1);
+    for (let i = occupied.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [occupied[i], occupied[j]] = [occupied[j], occupied[i]];
+    }
+    occupied.slice(0, zapCount).forEach(({ p, i }) => {
+      p.state = 'empty'; p.crop = null; p.plantedAt = null; p.watered = false; p.fertilized = false;
+      notifiedPlots.delete(i);
+    });
+    state.stats.cropsLostToWeather = (state.stats.cropsLostToWeather || 0) + zapCount;
+    state.stats.thunderSurvived    = (state.stats.thunderSurvived    || 0) + 1;
+    const immuneMsg = wheatImmune ? ' (Wheat safe — Kalbi!)' : '';
+    toast(`⛈️ Lightning! ${zapCount} crop${zapCount > 1 ? 's' : ''} zapped! 💀${immuneMsg}`);
+    renderGrid(); checkAchievements();
+  } else {
+    state.stats.thunderSurvived = (state.stats.thunderSurvived || 0) + 1;
+    toast('⛈️ Thunder rumbles… (nothing to zap)');
+    checkAchievements();
+  }
+}
+
+// ── Flood start: wipe a row and lock it ──────────────────
+function doFloodStart() {
+  const wheatImmune = getWheatWeatherImmune();
+  // Pick any row (not just occupied) — the row gets locked either way
+  const row = Math.floor(Math.random() * state.rows);
+  state.weather.floodedRow = row;
+  let lost = 0;
+  for (let c = 0; c < state.cols; c++) {
+    const idx = row * state.cols + c;
+    const p = state.plots[idx];
+    if (p && p.state !== 'empty' && !(wheatImmune && p.crop === 'wheat')) {
+      state.plots[idx] = { state: 'flooded', crop: null, plantedAt: null, watered: false, fertilized: false };
+      notifiedPlots.delete(idx);
+      lost++;
+    } else if (p && p.state === 'empty') {
+      state.plots[idx] = { state: 'flooded', crop: null, plantedAt: null, watered: false, fertilized: false };
+    }
+  }
+  state.stats.cropsLostToWeather = (state.stats.cropsLostToWeather || 0) + lost;
+  state.stats.floodSurvived      = (state.stats.floodSurvived      || 0) + 1;
+  const immuneMsg = wheatImmune ? ' (Wheat survived — Kalbi!)' : '';
+  const lostMsg = lost > 0 ? ` ${lost} crop${lost > 1 ? 's' : ''} lost.` : '';
+  toast(`🌊 Flood! Row ${row + 1} submerged for the hour!${lostMsg}${immuneMsg}`);
+  renderGrid(); checkAchievements();
+}
+
+// ── Flood end: restore flooded plots to empty ─────────────
+function doFloodEnd() {
+  state.plots.forEach((p, i) => {
+    if (p.state === 'flooded') {
+      state.plots[i] = { state: 'empty', crop: null, plantedAt: null, watered: false, fertilized: false };
+    }
+  });
+  state.weather.floodedRow = -1;
+  toast('🌊 Flood receded! Row is usable again.');
+  renderGrid();
+}
+
+function tickWeather() {
+  if (!state.weather) state.weather = { current: 'clear', changedAt: Date.now(), lastRainAt: 0, lastThunderAt: 0, floodedRow: -1 };
+  const now     = Date.now();
+  const elapsed = now - state.weather.changedAt;
+  const cur     = state.weather.current;
+
+  if (elapsed >= WEATHER_DURATION_MS) {
+    // Weather is ending — clear flood row if active
+    if (cur === 'flood' && state.weather.floodedRow >= 0) doFloodEnd();
+    const newW = pickWeather();
+    state.weather.current        = newW;
+    state.weather.changedAt      = now;
+    state.weather.lastRainAt     = 0;
+    state.weather.lastThunderAt  = 0;
+    state.weather.floodedRow     = -1;
+    saveState();
+    onWeatherStart(newW);
+  } else {
+    // Recurring events during active weather
+    if (cur === 'rain' && now - (state.weather.lastRainAt || 0) >= WEATHER_EVENT_INTERVAL) {
+      doRainWater();
+      saveState();
+    }
+    if (cur === 'thunder' && now - (state.weather.lastThunderAt || 0) >= WEATHER_EVENT_INTERVAL) {
+      doThunderZap();
+      saveState();
+    }
+  }
+
   updateWeatherBanner();
 }
 
@@ -567,6 +616,7 @@ function tick() {
   let changed = false;
 
   state.plots.forEach((plot, i) => {
+    if (plot.state === 'flooded') return; // locked during flood
     if (plot.state === 'planted') {
       const crop = CROPS[plot.crop || 'wheat'];
       const waterMult = plot.watered ? (getWaterSpeedup() ?? WATER_SPEEDUP) : 1.0;
@@ -611,7 +661,7 @@ function doReset() {
     wheat: 0, corn: 0, pumpkin: 0, truffle: 0,
     barnLevel: 0, rows: 2, cols: 2, rowExpands: 0, colExpands: 0,
     plots: [],
-    weather: { current: 'clear', changedAt: Date.now() },
+    weather: { current: 'clear', changedAt: Date.now(), lastRainAt: 0, lastThunderAt: 0, floodedRow: -1 },
     unlockedAchievements: [],
     stats: {
       totalHarvests: 0, wheatHarvests: 0, totalWatered: 0, totalFertilized: 0,

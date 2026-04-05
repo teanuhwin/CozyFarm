@@ -13,6 +13,24 @@ import {
   affinityLevel, bonusForLevel, activeBonusText, currentStoryText,
 } from './npcs.js';
 
+// ── LOCAL AFFINITY HELPER (avoids circular import) ────────
+// Mirrors affinityLevel() in npcs.js — reads state directly.
+function npcLevel(id) {
+  return Math.min(5, Math.floor(((state.npcs && state.npcs[id] && state.npcs[id].affinity) || 0) / 3));
+}
+function wheatSellPrice()   { const l=npcLevel('kalbi');   return l>=3?13:l>=1?11:10; }
+function cornSellPrice()    { const l=npcLevel('twins');   return l>=3?52:l>=1?46:40; }
+function pumpkinSellPrice() { const l=npcLevel('maru');    return l>=3?112:l>=1?92:80; }
+function truffleSellPrice() { const l=npcLevel('ellie');   return l>=5?500:l>=3?275:l>=1?242:220; }
+function waterSpeedupPct()  { const l=npcLevel('cinna');   return l>=5?85:l>=3?60:l>=1?45:35; }
+function hoseCost()         { const l=npcLevel('cinna');   return l>=2?140:200; }
+function fertYieldAmt()     { const l=npcLevel('kola');    return l>=3?5:l>=1?3:2; }
+function bigFertCost()      { const l=npcLevel('kola');    return l>=2?190:280; }
+function bigFertYieldAmt()  { return npcLevel('kola')>=5?8:fertYieldAmt(); }
+function glovesMaxUses()    { const l=npcLevel('kimchi');  return l>=5?Infinity:l>=4?60:l>=3?50:l>=2?40:l>=1?30:20; }
+function glovesChancePct()  { return npcLevel('kimchi')>=5?80:60; }
+
+
 // ── SHORTHAND ─────────────────────────────────────────────
 export function el(id) { return document.getElementById(id); }
 
@@ -96,7 +114,13 @@ export function renderPlot(idx) {
 
   plotEl.className = 'plot ' + plot.state;
 
-  if (plot.state === 'empty') {
+  if (plot.state === 'flooded') {
+    emoji.textContent = '🌊';
+    label.textContent = 'Flooded';
+    timer.textContent = '';
+    bar.style.width   = '0%';
+    mods.textContent  = '';
+  } else if (plot.state === 'empty') {
     emoji.textContent = '🟫';
     label.textContent = 'Plant';
     timer.textContent = '';
@@ -249,7 +273,7 @@ export function updateShopUI() {
     state.stats.everBoughtWater || state.stats.everBoughtFert ||
     (state.water || 0) > 0 || (state.fertilizer || 0) > 0 ||
     (state.lifetimeCoins || 0) >= 50;
-  const growingPlots = state.plots.filter(p => p.state === 'planted');
+  const growingPlots = state.plots.filter(p => p.state === 'planted'); // flooded plots can't be planted so no filter needed
   const totalStock   = w + c + pk + tr;
 
   // Sell all
@@ -294,7 +318,7 @@ export function updateShopUI() {
   el('water-count').textContent = `${state.water || 0} owned`;
 
   el('hose-shop-card').style.display = maxGridReached ? 'flex' : 'none';
-  el('buy-hose-btn').disabled = state.coins < WATER_HOSE_COST ||
+  el('buy-hose-btn').disabled = state.coins < hoseCost() ||
     growingPlots.filter(p => !p.watered).length === 0;
 
   el('buy-fert1-btn').disabled = state.coins < FERT_COST;
@@ -302,15 +326,60 @@ export function updateShopUI() {
   el('fert-count').textContent = `${state.fertilizer || 0} owned`;
 
   el('bigfert-shop-card').style.display = maxGridReached ? 'flex' : 'none';
-  el('buy-bigfert-btn').disabled = state.coins < BIG_FERT_COST ||
+  el('buy-bigfert-btn').disabled = state.coins < bigFertCost() ||
     growingPlots.filter(p => !p.fertilized).length === 0;
 
   // Gloves
   el('gloves-shop-card').style.display = wheatHarvests >= 20 ? 'flex' : 'none';
   const gd = state.glovesDurability || 0;
   el('buy-gloves-btn').disabled   = gd > 0 || state.coins < GLOVES_COST;
-  el('gloves-status').textContent = gd > 0 ? `${gd}/${GLOVES_USES} uses left` : 'Not equipped';
+  const maxUses = glovesMaxUses();
+  const usesLabel = maxUses === Infinity ? '∞ uses (Golden Mitts!)' : `${gd}/${maxUses} uses left`;
+  el('gloves-status').textContent = gd > 0 ? usesLabel : 'Not equipped';
   el('gloves-status').style.color = gd > 0 ? 'var(--accent2)' : 'var(--text3)';
+
+  // ── NPC AFFINITY-DRIVEN PRICE & DESC UPDATES ──────────
+  // Sell prices
+  const wPrice  = wheatSellPrice();
+  const cPrice  = cornSellPrice();
+  const pkPrice = pumpkinSellPrice();
+  const trPrice = truffleSellPrice();
+  const _elf = el;
+  _elf('wheat-sell-desc')  && (_elf('wheat-sell-desc').textContent   = `${wPrice}🪙 each`);
+  _elf('corn-sell-desc')   && (_elf('corn-sell-desc').textContent    = `${cPrice}🪙 each`);
+  _elf('pumpkin-sell-desc')&& (_elf('pumpkin-sell-desc').textContent = `${pkPrice}🪙 each`);
+  _elf('truffle-sell-desc')&& (_elf('truffle-sell-desc').textContent = trPrice===500 ? '500🪙 flat (Royal Purveyor!)' : `${trPrice}🪙 each`);
+  _elf('wheat-sell-price') && (_elf('wheat-sell-price').textContent   = `🪙${wPrice}`);
+  _elf('corn-sell-price')  && (_elf('corn-sell-price').textContent    = `🪙${cPrice}`);
+  _elf('pumpkin-sell-price')&&(_elf('pumpkin-sell-price').textContent = `🪙${pkPrice}`);
+  _elf('truffle-sell-price')&&(_elf('truffle-sell-price').textContent = `🪙${trPrice}`);
+
+  // Seed card sell-price hints
+  _elf('wheat-seed-desc')   && (_elf('wheat-seed-desc').textContent   = `Grows in 2 min · Sells for ${wPrice}🪙`);
+  _elf('corn-seed-desc')    && (_elf('corn-seed-desc').textContent    = `Grows in 8 min · Sells for ${cPrice}🪙`);
+  _elf('pumpkin-seed-desc') && (_elf('pumpkin-seed-desc').textContent = `Grows in 15 min · Sells for ${pkPrice}🪙`);
+  _elf('truffle-seed-desc') && (_elf('truffle-seed-desc').textContent = `Grows in 45 min · Sells for ${trPrice}🪙`);
+
+  // Water hose
+  const hCost = hoseCost();
+  const wPct  = waterSpeedupPct();
+  _elf('hose-cost-tag') && (_elf('hose-cost-tag').textContent = hCost === 0 ? 'FREE!' : `🪙${hCost}`);
+  _elf('hose-desc')     && (_elf('hose-desc').textContent     = `Waters all growing plots · ${wPct}% faster each`);
+  _elf('water-desc')    && (_elf('water-desc').textContent    = `Apply to one growing plot · ${wPct}% faster grow`);
+
+  // Fertilizer
+  const fYield  = fertYieldAmt();
+  const bfCost  = bigFertCost();
+  const bfYield = bigFertYieldAmt();
+  _elf('fert-desc')         && (_elf('fert-desc').textContent    = `Apply to one growing plot · +${fYield} yield on harvest`);
+  _elf('bigfert-cost-tag')  && (_elf('bigfert-cost-tag').textContent = bfCost === 0 ? 'FREE!' : `🪙${bfCost}`);
+  _elf('bigfert-desc')      && (_elf('bigfert-desc').textContent  = `Fertilizes all growing plots · +${bfYield} yield each`);
+
+  // Gloves desc
+  const gChance = glovesChancePct();
+  const gMax    = glovesMaxUses();
+  const gUsesStr = gMax === Infinity ? 'unlimited uses' : `${gMax} uses`;
+  _elf('gloves-desc') && (_elf('gloves-desc').textContent = `${gChance}% seed recovery on harvest · ${gUsesStr}`);
 
   // Sell rows
   el('sell-wheat-all-btn').disabled   = w  === 0;
@@ -378,9 +447,26 @@ export function updateWeatherBanner() {
   el('weather-icon').textContent = w.icon;
   el('weather-name').textContent = w.name;
   el('weather-desc').textContent = w.desc;
-  const remaining = Math.max(0, WEATHER_DURATION_MS - (Date.now() - state.weather.changedAt));
+  const now       = Date.now();
+  const remaining = Math.max(0, WEATHER_DURATION_MS - (now - state.weather.changedAt));
   const mins      = Math.ceil(remaining / 60000);
-  el('weather-timer').textContent = mins > 0 ? `${mins}m left` : 'Changing...';
+  const cur       = state.weather.current;
+
+  // For recurring events, show time until next trigger
+  let timerText = mins > 0 ? `${mins}m left` : 'Changing...';
+  if (cur === 'rain' && state.weather.lastRainAt) {
+    const nextRain = Math.max(0, Math.ceil((5 * 60 * 1000 - (now - state.weather.lastRainAt)) / 1000));
+    if (nextRain > 0) timerText += ` · next water ${nextRain >= 60 ? Math.ceil(nextRain/60)+'m' : nextRain+'s'}`;
+  }
+  if (cur === 'thunder' && state.weather.lastThunderAt) {
+    const nextZap = Math.max(0, Math.ceil((5 * 60 * 1000 - (now - state.weather.lastThunderAt)) / 1000));
+    if (nextZap > 0) timerText += ` · next zap ${nextZap >= 60 ? Math.ceil(nextZap/60)+'m' : nextZap+'s'}`;
+  }
+  if (cur === 'flood' && state.weather.floodedRow >= 0) {
+    timerText += ` · row ${state.weather.floodedRow + 1} flooded`;
+  }
+
+  el('weather-timer').textContent = timerText;
 }
 
 // ── TOWN VISIBILITY + BADGE ───────────────────────────────
