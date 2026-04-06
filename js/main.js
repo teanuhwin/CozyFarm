@@ -172,12 +172,10 @@ function showPlotOptions(idx) {
   const crop         = CROPS[plot.crop];
   const elapsed      = Date.now() - plot.plantedAt;
   const weatherMult  = currentWeatherMultiplier();
-
   let growMs = crop.growMs;
   // Apply same 30% floor as tick loop
   growMs = Math.max(crop.growMs * 0.30, growMs);
   growMs = Math.max(10000, growMs * weatherMult);
-  
   // Compute elapsed with water speedup
   let effectiveElapsed = elapsed;
   if (plot.watered && plot.wateredAt) {
@@ -200,7 +198,6 @@ function showPlotOptions(idx) {
 
   toast(`⏳ ${formatTime(remaining)} left${modStr}${hintStr}`);
 }
-
 
 function harvestPlot(idx) {
   // Moto sticky fingers: throttle harvests to 1 per 10s

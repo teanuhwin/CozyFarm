@@ -129,43 +129,31 @@ export function renderPlot(idx) {
   } else {
     const crop = CROPS[plot.crop || 'wheat'];
 
-if (plot.state === 'planted') {
+    if (plot.state === 'planted') {
       emoji.textContent = crop.seedling;
-      
-      // 1. Start with base growth time
-      let growMs = crop.growMs;
-
-      // 2. Apply NPC crop-specific bonuses (Mirroring main.js tick loop)
-      // Note: You may need to ensure affinityLevelFor is available or imported
-      if (plot.crop === 'truffle') growMs *= getTruffleGrowMult();
-      if (plot.crop === 'corn')    growMs *= getCornGrowMult();
-      const isBadWeather = ['rain', 'thunder', 'flood'].includes(state.weather.current);
-      if (plot.crop === 'pumpkin' && isBadWeather) growMs *= getPumpkinWeatherMult();
-      if (plot.crop === 'wheat' && (typeof affinityLevelFor === 'function' && affinityLevelFor('kalbi') >= 5)) growMs *= 0.50;
-
-      // 3. Apply the 30% floor AFTER crop bonuses but BEFORE weather/10s floor
-      let effectiveGrowMs = Math.max(crop.growMs * 0.30, growMs);
-
-      // 4. Apply weather and absolute 10s floor
       const weatherMult = currentWeatherMultiplier();
-      const effWeatherMult = (isPhotosynthActive() && weatherMult > 1.0) ? 1.0 : weatherMult;
-      effectiveGrowMs = Math.max(10000, effectiveGrowMs * effWeatherMult);
-
-      // 5. Compute elapsed (Keep your updated water logic here)
+      // Mirror tick loop: 30% floor then weather mult then 10s absolute
+      let effectiveGrowMs = Math.max(crop.growMs * 0.30, crop.growMs);
+      effectiveGrowMs = Math.max(10000, effectiveGrowMs * weatherMult);
+      // Compute elapsed using wateredAt
       const now_r = Date.now();
       let effectiveElapsed = now_r - plot.plantedAt;
       if (plot.watered && plot.wateredAt) {
         const speedup = (typeof getWaterSpeedup === 'function' && getWaterSpeedup() !== null)
-          ? getWaterSpeedup() : 1.35;  
+          ? getWaterSpeedup() : 1.35;
         const bw = Math.max(0, plot.wateredAt - plot.plantedAt);
         const aw = Math.max(0, now_r - plot.wateredAt);
         effectiveElapsed = bw + (aw * speedup);
       }
-
       const pct = Math.min(100, (effectiveElapsed / effectiveGrowMs) * 100);
       bar.style.width   = pct + '%';
       label.textContent = crop.name;
       timer.textContent = '';
+    } else if (plot.state === 'ready') {
+      emoji.textContent = crop.emoji;
+      label.textContent = 'Harvest!';
+      timer.textContent = '';
+      bar.style.width   = '100%';
     }
 
     const modIcons = [];
