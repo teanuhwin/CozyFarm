@@ -172,31 +172,11 @@ function showPlotOptions(idx) {
   const crop         = CROPS[plot.crop];
   const elapsed      = Date.now() - plot.plantedAt;
   const weatherMult  = currentWeatherMultiplier();
-  
-  /* OLD CODE
+
   let growMs = crop.growMs;
   // Apply same 30% floor as tick loop
   growMs = Math.max(crop.growMs * 0.30, growMs);
   growMs = Math.max(10000, growMs * weatherMult);
-  */
-  let growMs = crop.growMs;
-
-  // 1. Apply NPC crop-specific bonuses BEFORE the 30% floor
-  if (plot.crop === 'truffle') growMs *= getTruffleGrowMult();
-  if (plot.crop === 'corn')    growMs *= getCornGrowMult();
-  
-  const currentWeather = (state.weather && state.weather.current) || 'clear';
-  const isBadWeather = ['rain', 'thunder', 'flood'].includes(currentWeather);
-  if (plot.crop === 'pumpkin' && isBadWeather) growMs *= getPumpkinWeatherMult();
-  if (plot.crop === 'wheat' && (typeof affinityLevelFor === 'function' && affinityLevelFor('kalbi') >= 5)) growMs *= 0.50;
-
-  // 2. Apply the 30% floor AFTER crop bonuses
-  growMs = Math.max(crop.growMs * 0.30, growMs);
-
-  // 3. Apply weather (accounting for Photosynthesis) and the 10s absolute floor
-  const effWeatherMult = (isPhotosynthActive() && weatherMult > 1.0) ? 1.0 : weatherMult;
-  growMs = Math.max(10000, growMs * effWeatherMult);
-
   
   // Compute elapsed with water speedup
   let effectiveElapsed = elapsed;
