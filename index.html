@@ -67,14 +67,13 @@
       </button>
     </div>
 
-    <div class="merchant-bar">
+    <div class="grid-meta-row">
       <button id="merchant-mochi" class="merchant-icon mochi-icon" style="display:none" title="Mochi is visiting!">☀️</button>
-      <div id="merchant-effect-badge" class="merchant-effect-badge" style="display:none"></div>
+      <div class="grid-meta-center">
+        <div class="grid-size-badge" id="grid-size-badge">2 × 2</div>
+        <div id="merchant-effect-badge" class="merchant-effect-badge" style="display:none"></div>
+      </div>
       <button id="merchant-moto" class="merchant-icon moto-icon" style="display:none" title="Moto is visiting!">🌙</button>
-    </div>
-
-    <div style="text-align:center">
-      <div class="grid-size-badge" id="grid-size-badge">2 × 2</div>
     </div>
 
     <div class="farm-grid" id="farm-grid"></div>
@@ -384,6 +383,27 @@
         <label class="toggle">
           <input type="checkbox" id="setting-vibrate">
           <div class="toggle-track"><div class="toggle-thumb"></div></div>
+        </label>
+      </div>
+    </div>
+
+    <div class="section-title">💾 Save &amp; Load</div>
+    <div class="settings-card">
+      <div class="settings-row">
+        <div class="settings-label">
+          <div class="s-title">⬇️ Download Save</div>
+          <div class="s-desc">Export your progress as a file</div>
+        </div>
+        <button class="btn sm" id="download-save-btn">Download</button>
+      </div>
+      <div class="settings-row" style="margin-top:10px">
+        <div class="settings-label">
+          <div class="s-title">⬆️ Upload Save</div>
+          <div class="s-desc">Restore progress from a file</div>
+        </div>
+        <label class="btn sm" id="upload-save-label" style="cursor:pointer;display:flex;align-items:center;justify-content:center">
+          Upload
+          <input type="file" id="upload-save-input" accept=".json" style="display:none">
         </label>
       </div>
     </div>
