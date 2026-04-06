@@ -65,7 +65,7 @@ export const ACHIEVEMENTS = [
 
 export const WATER_COST      = 6;
 export const WATER_HOSE_COST = 200;
-export const WATER_SPEEDUP   = 1.35;
+export const WATER_SPEEDUP   = 0.65;
 export const FERT_COST       = 8;
 export const BIG_FERT_COST   = 280;
 export const FERT_YIELD      = 2;
@@ -75,11 +75,11 @@ export const GLOVES_CHANCE   = 0.60;
 
 export const BARN_BASE_CAP = 20;
 export const BARN_UPGRADES = [
-  { cap: 40,  cost: 60   },
-  { cap: 60,  cost: 150  },
-  { cap: 100, cost: 350  },
-  { cap: 150, cost: 2500 },
-  { cap: 200, cost: 8000 },
+  { cap: 30,  cost: 60   },
+  { cap: 45,  cost: 150  },
+  { cap: 60, cost: 350  },
+  { cap: 80, cost: 2500 },
+  { cap: 100, cost: 5000 },
 ];
 
 export const EXPAND_BASE = 50;
@@ -257,4 +257,55 @@ export function migrateState() {
   if (state.merchant.motoOutcome    === undefined) state.merchant.motoOutcome    = null;
   if (state.merchant.activeItemId   === undefined) state.merchant.activeItemId   = null;
   if (state.merchant.activeRiddleId === undefined) state.merchant.activeRiddleId = null;
+}
+
+// ── GROW-DURATION HELPERS ─────────────────────────────────
+// Single source of truth for grow-time and elapsed-time calculations.
+// Called by the tick engine, the progress bar renderer, and the toast.
+//
+// opts (all optional, injected by callers that import npcs.js):
+//   truffleGrowMult  : number  – getTruffleGrowMult()
+//   cornGrowMult     : number  – getCornGrowMult()
+//   pumpkinWeatherMult: number – getPumpkinWeatherMult()
+//   kalbiL5          : bool   – affinityLevel('kalbi') >= 5
+//   waterSpeedup     : number – getWaterSpeedup() (fraction; lower = faster)
+//   photosynthActive : bool   – isPhotosynthActive()
+//   timerFrozen      : bool   – isTimerFrozen()
+//   weatherMultiplier: number – currentWeatherMultiplier() (caller passes this)
+
+export function computeGrowMs(cropKey, weatherMult, isBadWeather, opts = {}) {
+  const crop = CROPS[cropKey] || CROPS.wheat;
+  let growMs = crop.growMs;
+
+  // Crop-specific NPC bonuses
+  if (cropKey === 'truffle' && opts.truffleGrowMult != null) growMs *= opts.truffleGrowMult;
+  if (cropKey === 'corn'    && opts.cornGrowMult    != null) growMs *= opts.cornGrowMult;
+  if (cropKey === 'pumpkin' && isBadWeather && opts.pumpkinWeatherMult != null)
+    growMs *= opts.pumpkinWeatherMult;
+  if (cropKey === 'wheat'   && opts.kalbiL5)                growMs *= 0.50;
+
+  // 30% floor before weather so NPC bonuses can't collapse below it
+  growMs = Math.max(crop.growMs * 0.30, growMs);
+
+  // Weather (Photosynthesis blocks overcast slowdown)
+  const effWeather = (opts.photosynthActive && weatherMult > 1.0) ? 1.0 : weatherMult;
+  growMs *= effWeather;
+
+  // Absolute minimum 10 s
+  growMs = Math.max(10000, growMs);
+
+  return growMs;
+}
+
+export function computeEffectiveElapsed(plot, waterSpeedup) {
+  const FALLBACK = 0.65; // WATER_SPEEDUP constant
+  const speedup  = waterSpeedup != null ? waterSpeedup : FALLBACK;
+  const now      = Date.now();
+  let elapsed    = now - (plot.plantedAt || now);
+  if (plot.watered && plot.wateredAt) {
+    const bw = Math.max(0, plot.wateredAt - plot.plantedAt);
+    const aw = Math.max(0, now - plot.wateredAt);
+    elapsed  = bw + aw / speedup;
+  }
+  return elapsed;
 }

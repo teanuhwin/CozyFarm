@@ -12,6 +12,7 @@ import {
   BARN_UPGRADES, EXPAND_BASE, EXPAND_MULT, MAX_ROWS, MAX_COLS,
   barnCap, totalBarnContents, expandCost, initPlots,
   currentWeatherMultiplier, pickWeather, formatTime, migrateState,
+  computeGrowMs, computeEffectiveElapsed,
 } from './state.js';
 
 import {
@@ -168,22 +169,19 @@ function clickPlot(idx) {
 }
 
 function showPlotOptions(idx) {
-  const plot         = state.plots[idx];
-  const crop         = CROPS[plot.crop];
-  const elapsed      = Date.now() - plot.plantedAt;
-  const weatherMult  = currentWeatherMultiplier();
-  let growMs = crop.growMs;
-  // Apply same 30% floor as tick loop
-  growMs = Math.max(crop.growMs * 0.30, growMs);
-  growMs = Math.max(10000, growMs * weatherMult);
-  // Compute elapsed with water speedup
-  let effectiveElapsed = elapsed;
-  if (plot.watered && plot.wateredAt) {
-    const speedup = getWaterSpeedup() ?? WATER_SPEEDUP;
-    const beforeWater = Math.max(0, plot.wateredAt - plot.plantedAt);
-    const afterWater  = Math.max(0, Date.now() - plot.wateredAt);
-    effectiveElapsed  = beforeWater + afterWater / speedup;
-  }
+  const plot           = state.plots[idx];
+  const cropKey        = plot.crop || 'wheat';
+  const weatherMult    = currentWeatherMultiplier();
+  const currentWeather = (state.weather && state.weather.current) || 'clear';
+  const isBadWeather   = ['rain', 'thunder', 'flood'].includes(currentWeather);
+  const growMs = computeGrowMs(cropKey, weatherMult, isBadWeather, {
+    truffleGrowMult:    getTruffleGrowMult(),
+    cornGrowMult:       getCornGrowMult(),
+    pumpkinWeatherMult: getPumpkinWeatherMult(),
+    kalbiL5:            affinityLevelFor('kalbi') >= 5,
+    photosynthActive:   isPhotosynthActive(),
+  });
+  const effectiveElapsed = computeEffectiveElapsed(plot, getWaterSpeedup() ?? WATER_SPEEDUP);
   const remaining = Math.max(0, Math.ceil((growMs - effectiveElapsed) / 1000));
 
   const mods = [];
@@ -709,35 +707,15 @@ function tick() {
       // Moto frozen soil: skip timer advancement
       if (isTimerFrozen()) { renderPlot(i); return; }
 
-      const crop = CROPS[plot.crop || 'wheat'];
-      let growMs = crop.growMs;
-
-      // Crop-specific grow bonuses
-      if (plot.crop === 'truffle') growMs *= getTruffleGrowMult();
-      if (plot.crop === 'corn')    growMs *= getCornGrowMult();
-      if (plot.crop === 'pumpkin' && isBadWeather) growMs *= getPumpkinWeatherMult();
-      if (plot.crop === 'wheat' && affinityLevelFor('kalbi') >= 5) growMs *= 0.50;
-
-      // Fix A: Cap crop-specific bonuses at 30% of base grow time before water applies
-      // Prevents Kalbi+Cinna from collapsing wheat to sub-second grow times
-      growMs = Math.max(crop.growMs * 0.30, growMs);
-
-      // Mochi photosynth blocks overcast slowdown
-      const effWeatherMult = (isPhotosynthActive() && weatherMult > 1.0) ? 1.0 : weatherMult;
-      growMs *= effWeatherMult;
-
-      // Absolute minimum 10s regardless of anything
-      growMs = Math.max(10000, growMs);
-
-      // Compute elapsed accounting for water speedup (wateredAt approach)
-      const now_t    = Date.now();
-      let elapsed    = now_t - plot.plantedAt;
-      if (plot.watered && plot.wateredAt) {
-        const speedup            = getWaterSpeedup() ?? WATER_SPEEDUP;
-        const elapsedBeforeWater = Math.max(0, plot.wateredAt - plot.plantedAt);
-        const elapsedAfterWater  = Math.max(0, now_t - plot.wateredAt);
-        elapsed = elapsedBeforeWater + elapsedAfterWater / speedup;
-      }
+      const cropKey = plot.crop || 'wheat';
+      const growMs  = computeGrowMs(cropKey, weatherMult, isBadWeather, {
+        truffleGrowMult:    getTruffleGrowMult(),
+        cornGrowMult:       getCornGrowMult(),
+        pumpkinWeatherMult: getPumpkinWeatherMult(),
+        kalbiL5:            affinityLevelFor('kalbi') >= 5,
+        photosynthActive:   isPhotosynthActive(),
+      });
+      const elapsed = computeEffectiveElapsed(plot, getWaterSpeedup() ?? WATER_SPEEDUP);
 
       if (elapsed >= growMs) {
         plot.state = 'ready';
@@ -973,22 +951,24 @@ function init() {
   el('setting-dark').checked    = settings.dark;
   el('setting-vibrate').checked = settings.vibrate;
 
-  // Catch up crops that grew while the page was closed
+  // Catch up crops that grew while the page was closed.
+  // Use the same shared helpers as the live tick loop so all NPC and weather
+  // bonuses are respected — even on cold start.
+  const catchUpWeatherMult = currentWeatherMultiplier();
+  const catchUpWeather     = (state.weather && state.weather.current) || 'clear';
+  const catchUpBadWeather  = ['rain', 'thunder', 'flood'].includes(catchUpWeather);
   state.plots.forEach(plot => {
     if (plot.state === 'planted') {
-      const crop   = CROPS[plot.crop || 'wheat'];
-        let growMs = crop.growMs;
-      growMs = Math.max(crop.growMs * 0.30, growMs);
-      growMs = Math.max(10000, growMs);
-      const now_c = Date.now();
-      let elapsedC = now_c - plot.plantedAt;
-      if (plot.watered && plot.wateredAt) {
-        const sp = getWaterSpeedup() ?? WATER_SPEEDUP;
-        const bw = Math.max(0, plot.wateredAt - plot.plantedAt);
-        const aw = Math.max(0, now_c - plot.wateredAt);
-        elapsedC = bw + aw / sp;
-      }
-      if (elapsedC >= growMs) plot.state = 'ready';
+      const cropKey = plot.crop || 'wheat';
+      const growMs  = computeGrowMs(cropKey, catchUpWeatherMult, catchUpBadWeather, {
+        truffleGrowMult:    getTruffleGrowMult(),
+        cornGrowMult:       getCornGrowMult(),
+        pumpkinWeatherMult: getPumpkinWeatherMult(),
+        kalbiL5:            affinityLevelFor('kalbi') >= 5,
+        photosynthActive:   isPhotosynthActive(),
+      });
+      const elapsed = computeEffectiveElapsed(plot, getWaterSpeedup() ?? WATER_SPEEDUP);
+      if (elapsed >= growMs) plot.state = 'ready';
     }
   });
 

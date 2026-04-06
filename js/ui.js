@@ -6,6 +6,7 @@ import {
   GLOVES_COST, GLOVES_USES,
   BARN_UPGRADES, MAX_ROWS, MAX_COLS,
   barnCap, totalBarnContents, expandCost, currentWeatherMultiplier, formatTime,
+  computeGrowMs, computeEffectiveElapsed,
 } from './state.js';
 import {
   NPC_DATA, NPC_ORDER, CROP_EMOJI,
@@ -131,20 +132,26 @@ export function renderPlot(idx) {
 
     if (plot.state === 'planted') {
       emoji.textContent = crop.seedling;
-      const weatherMult = currentWeatherMultiplier();
-      // Mirror tick loop: 30% floor then weather mult then 10s absolute
-      let effectiveGrowMs = Math.max(crop.growMs * 0.30, crop.growMs);
-      effectiveGrowMs = Math.max(10000, effectiveGrowMs * weatherMult);
-      // Compute elapsed using wateredAt
-      const now_r = Date.now();
-      let effectiveElapsed = now_r - plot.plantedAt;
-      if (plot.watered && plot.wateredAt) {
-        const speedup = (typeof getWaterSpeedup === 'function' && getWaterSpeedup() !== null)
-          ? getWaterSpeedup() : 1.35;
-        const bw = Math.max(0, plot.wateredAt - plot.plantedAt);
-        const aw = Math.max(0, now_r - plot.wateredAt);
-        effectiveElapsed = bw + (aw * speedup);
-      }
+      const cropKey        = plot.crop || 'wheat';
+      const weatherMult    = currentWeatherMultiplier();
+      const curWeather     = (state.weather && state.weather.current) || 'clear';
+      const isBadWeather   = ['rain', 'thunder', 'flood'].includes(curWeather);
+      // Read photosynthActive directly from state to avoid a circular import
+      const eff            = state.merchant && state.merchant.effect;
+      const photosynthOn   = !!(eff && eff.id === 'photosynth' && (!eff.expiresAt || Date.now() < eff.expiresAt));
+      // Derive NPC grow-mult values from the local npcLevel() helper so this
+      // stays in sync with npcs.js without duplicating import logic.
+      const effectiveGrowMs = computeGrowMs(cropKey, weatherMult, isBadWeather, {
+        truffleGrowMult:    npcLevel('ellie') >= 4 ? 0.80 : npcLevel('ellie') >= 2 ? 0.90 : 1.0,
+        cornGrowMult:       npcLevel('twins') >= 5 ? 0.50 : 1.0,
+        pumpkinWeatherMult: npcLevel('maru')  >= 4 ? 0.70 : 1.0,
+        kalbiL5:            npcLevel('kalbi') >= 5,
+        photosynthActive:   photosynthOn,
+      });
+      // Derive water speedup from local npcLevel() — mirrors getWaterSpeedup() in npcs.js
+      const cinnaLvl   = npcLevel('cinna');
+      const waterSpeed = cinnaLvl >= 5 ? 0.30 : cinnaLvl >= 3 ? 0.40 : cinnaLvl >= 1 ? 0.55 : 0.65;
+      const effectiveElapsed = computeEffectiveElapsed(plot, waterSpeed);
       const pct = Math.min(100, (effectiveElapsed / effectiveGrowMs) * 100);
       bar.style.width   = pct + '%';
       label.textContent = crop.name;
