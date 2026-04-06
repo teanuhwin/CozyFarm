@@ -185,7 +185,7 @@ export function expandCost(type) {
 export function initPlots() {
   const needed = state.rows * state.cols;
   while (state.plots.length < needed) {
-    state.plots.push({ state: 'empty', crop: null, plantedAt: null, watered: false, fertilized: false });
+    state.plots.push({ state: 'empty', crop: null, plantedAt: null, watered: false, fertilized: false, wateredAt: null });
   }
   state.plots = state.plots.slice(0, needed);
 }
@@ -249,8 +249,9 @@ export function migrateState() {
   // Migrate old plot format
   state.plots.forEach(p => {
     if (!p.crop) p.crop = 'wheat';
-    if (p.watered   === undefined) p.watered   = false;
+    if (p.watered    === undefined) p.watered    = false;
     if (p.fertilized === undefined) p.fertilized = false;
+    if (p.wateredAt  === undefined) p.wateredAt  = null;
   });
   // Migrate merchant state
   if (!state.merchant) state.merchant = { active: null, arrivedAt: 0, nextVisitAt: 0, nextMerchant: null, effect: null, motoOutcome: null, activeItemId: null, activeRiddleId: null };

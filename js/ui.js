@@ -264,7 +264,10 @@ export function updateBegZone() {
   if (!zone) return;
   zone.style.display = broke ? 'block' : 'none';
   if (!broke) {
-    state.begTaps = 0;
+    if (state.begTaps !== 0) {
+      state.begTaps = 0;
+      saveState();
+    }
     const prog = el('beg-progress');
     if (prog) prog.textContent = '';
   }
