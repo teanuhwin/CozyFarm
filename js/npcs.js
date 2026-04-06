@@ -71,7 +71,7 @@ export const NPC_DATA = {
       'Truffle grow speed +10%',
       'Truffle sell price +25%',
       'Truffle grow speed +20%',
-      '✨ ULTIMATE: Truffles always yield min. 2 + flat 500 🪙 sell price!',
+      '✨ ULTIMATE: Truffles always yield min. 2 + sell for 2.2× price!',
     ],
     requests: [
       { type: 'crop', cropKey: 'truffle', text: "My catering team needs {qty} 🍄 Truffles for the Royal Gala. Don't be late; the Queen is coming." },
@@ -143,7 +143,7 @@ export const NPC_DATA = {
       'Water Hose cost reduced to 140 🪙',
       'Water speedup increased to 60%',
       '20% chance for Water Hose to be free',
-      '✨ ULTIMATE: Water Hose 85% speedup + covers a 2×2 area!',
+      '✨ ULTIMATE: Water 70% faster + single Water covers a 3×3 area!',
     ],
     requests: [
       { type: 'crop', cropKey: 'wheat', text: 'The whole town has the sniffles. I need {qty} 🌾 Wheat to make soothing herbal compresses.' },
@@ -272,10 +272,11 @@ const CAPSTONE_CROP_MAP = {
 };
 
 function generateCapstoneRequest(npcId) {
-  const cropKey = CAPSTONE_CROP_MAP[npcId] || 'wheat';
+  const cropKey  = CAPSTONE_CROP_MAP[npcId] || 'wheat';
+  const coinCost = CAPSTONE_COIN_COSTS[npcId] || CAPSTONE_COIN_REWARD;
   return {
-    type: 'combo', cropKey, crop: CAPSTONE_RESOURCE_AMT, coins: CAPSTONE_COIN_REWARD, isCapstone: true,
-    text: `⭐ FINAL REQUEST: This is it — everything I've been building toward. I need 100 ${CROP_EMOJI[cropKey]} and 15,000 🪙. What comes next will stay with you forever.`,
+    type: 'combo', cropKey, crop: CAPSTONE_RESOURCE_AMT, coins: coinCost, isCapstone: true,
+    text: `⭐ FINAL REQUEST: This is it — everything I've been building toward. I need 100 ${CROP_EMOJI[cropKey]} and ${coinCost.toLocaleString()} 🪙. What comes next will stay with you forever.`,
   };
 }
 
@@ -406,7 +407,7 @@ export function getWheatYieldBonus() {
 
 export function getTruffleSellPrice(base) {
   const lvl = affinityLevel('ellie');
-  if (lvl >= 5) return 500;
+  if (lvl >= 5) return Math.round(base * 2.20);
   if (lvl >= 3) return Math.round(base * 1.25);
   if (lvl >= 1) return Math.round(base * 1.10);
   return base;
@@ -459,10 +460,10 @@ export function getPumpkinWeatherMult() {
 
 export function getWaterSpeedup() {
   const lvl = affinityLevel('cinna');
-  if (lvl >= 5) return 0.15;
-  if (lvl >= 3) return 0.40;
-  if (lvl >= 1) return 0.55;
-  return null;
+  if (lvl >= 5) return 0.30; // 70% faster (crops take 30% of base time)
+  if (lvl >= 3) return 0.40; // 60% faster
+  if (lvl >= 1) return 0.55; // 45% faster
+  return null; // base 35% faster (WATER_SPEEDUP = 0.65)
 }
 
 export function getWaterHoseCost(base) {
@@ -472,6 +473,11 @@ export function getWaterHoseCost(base) {
   return base;
 }
 
+/** Returns the radius of single-water area effect (0 = just this plot, 1 = 3x3) */
+export function getWaterAreaSize() {
+  return affinityLevel('cinna') >= 5 ? 1 : 0;
+}
+/** @deprecated use getWaterAreaSize */
 export function getWaterHoseAreaBoost() {
   return affinityLevel('cinna') >= 5;
 }
@@ -501,3 +507,14 @@ export function getFertInstantChance() {
 export function getWheatWeatherImmune() {
   return affinityLevel('kalbi') >= 5;
 }
+
+// F. Scaled capstone coin costs per NPC (later NPCs = higher cost)
+export const CAPSTONE_COIN_COSTS = {
+  kimchi: 15000,
+  kalbi:  15000,
+  ellie:  20000,
+  twins:  20000,
+  maru:   25000,
+  cinna:  35000,
+  kola:   50000,
+};

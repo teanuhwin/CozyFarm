@@ -22,7 +22,7 @@ import {
   getTruffleSellPrice, getTruffleGrowMult, getTruffleMinYield,
   getCornYieldBonus, getCornSellMult, getCornGrowMult, rollCornInstant,
   getPumpkinSellMult, getPumpkinWeatherMult,
-  getWaterSpeedup, getWaterHoseCost, getWaterHoseAreaBoost,
+  getWaterSpeedup, getWaterHoseCost, getWaterHoseAreaBoost, getWaterAreaSize,
   getFertYield, getBigFertCost, getBigFertYield, getFertInstantChance,
 } from './npcs.js';
 
@@ -66,14 +66,9 @@ function selectTool(tool) {
 }
 
 
-/** Bake the water speedup into plantedAt so the timer is frozen-proof. */
+/** Record when a plot was watered. The tick loop uses wateredAt to compute speedup. */
 function applyWaterSpeedup(plot) {
-  const crop     = CROPS[plot.crop || 'wheat'];
-  const speedup  = getWaterSpeedup() ?? WATER_SPEEDUP;
-  // Time saved = growMs * (1 - speedup) scaled to how far through we are
-  // Simpler: shift plantedAt back by growMs*(1-speedup) so remaining time shrinks
-  const timeSaved = crop.growMs * (1 - speedup);
-  plot.plantedAt  = plot.plantedAt - timeSaved;
+  plot.wateredAt = Date.now();
 }
 // ── PLOT INTERACTIONS ─────────────────────────────────────
 function clickPlot(idx) {
@@ -86,15 +81,34 @@ function clickPlot(idx) {
     if (plot.watered) { toast('Already watered!'); return; }
     if ((state.water || 0) < 1) { toast('No water! Buy some in the Shop.'); return; }
     state.water--;
-    plot.watered = true;
-    applyWaterSpeedup(plot);
-    state.stats.totalWatered = (state.stats.totalWatered || 0) + 1;
-    saveState();
-    renderPlot(idx);
-    updateHeader();
-    updateShopUI();
-    updateFarmToolbar(selectedCrop, selectedTool);
-    toast('💧 Watered! Growing faster.');
+    const areaSize = getWaterAreaSize(); // 0 = single plot, 1 = 3x3
+    if (areaSize > 0) {
+      // 3x3 area around the tapped plot
+      const row = Math.floor(idx / state.cols);
+      const col = idx % state.cols;
+      let wetCount = 0;
+      for (let dr = -areaSize; dr <= areaSize; dr++) {
+        for (let dc = -areaSize; dc <= areaSize; dc++) {
+          const r2 = row + dr, c2 = col + dc;
+          if (r2 < 0 || r2 >= state.rows || c2 < 0 || c2 >= state.cols) continue;
+          const p2 = state.plots[r2 * state.cols + c2];
+          if (p2 && p2.state === 'planted' && !p2.watered) {
+            p2.watered = true;
+            applyWaterSpeedup(p2);
+            wetCount++;
+          }
+        }
+      }
+      state.stats.totalWatered = (state.stats.totalWatered || 0) + 1;
+      saveState(); renderGrid(); updateHeader(); updateShopUI(); updateFarmToolbar(selectedCrop, selectedTool);
+      toast(`💧✨ Cinna's blessing! Watered ${wetCount} plot${wetCount !== 1 ? 's' : ''} in a 3×3 area!`);
+    } else {
+      plot.watered = true;
+      applyWaterSpeedup(plot);
+      state.stats.totalWatered = (state.stats.totalWatered || 0) + 1;
+      saveState(); renderPlot(idx); updateHeader(); updateShopUI(); updateFarmToolbar(selectedCrop, selectedTool);
+      toast('💧 Watered! Growing faster.');
+    }
     checkAchievements();
     return;
   }
@@ -158,10 +172,19 @@ function showPlotOptions(idx) {
   const crop         = CROPS[plot.crop];
   const elapsed      = Date.now() - plot.plantedAt;
   const weatherMult  = currentWeatherMultiplier();
-  // Water speedup is baked into plantedAt, so just use base growMs
-  const baseGrowMs   = crop.growMs;
-  const growMs       = baseGrowMs * weatherMult;
-  const remaining    = Math.max(0, Math.ceil((growMs - elapsed) / 1000));
+  let growMs = crop.growMs;
+  // Apply same 30% floor as tick loop
+  growMs = Math.max(crop.growMs * 0.30, growMs);
+  growMs = Math.max(10000, growMs * weatherMult);
+  // Compute elapsed with water speedup
+  let effectiveElapsed = elapsed;
+  if (plot.watered && plot.wateredAt) {
+    const speedup = getWaterSpeedup() ?? WATER_SPEEDUP;
+    const beforeWater = Math.max(0, plot.wateredAt - plot.plantedAt);
+    const afterWater  = Math.max(0, Date.now() - plot.wateredAt);
+    effectiveElapsed  = beforeWater + afterWater / speedup;
+  }
+  const remaining = Math.max(0, Math.ceil((growMs - effectiveElapsed) / 1000));
 
   const mods = [];
   if (plot.watered)    mods.push('💧 watered');
@@ -277,6 +300,7 @@ function harvestPlot(idx) {
     plot.plantedAt  = null;
     plot.watered    = false;
     plot.fertilized = false;
+    plot.wateredAt  = null;
     notifiedPlots.delete(idx);
   }
   // Partial: plot stays 'ready' so player can harvest the rest after making barn space
@@ -607,11 +631,11 @@ function doFloodStart() {
     const idx = row * state.cols + c;
     const p = state.plots[idx];
     if (p && p.state !== 'empty' && !(wheatImmune && p.crop === 'wheat')) {
-      state.plots[idx] = { state: 'flooded', crop: null, plantedAt: null, watered: false, fertilized: false };
+      state.plots[idx] = { state: 'flooded', crop: null, plantedAt: null, watered: false, fertilized: false, wateredAt: null };
       notifiedPlots.delete(idx);
       lost++;
     } else if (p && p.state === 'empty') {
-      state.plots[idx] = { state: 'flooded', crop: null, plantedAt: null, watered: false, fertilized: false };
+      state.plots[idx] = { state: 'flooded', crop: null, plantedAt: null, watered: false, fertilized: false, wateredAt: null };
     }
   }
   state.stats.cropsLostToWeather = (state.stats.cropsLostToWeather || 0) + lost;
@@ -626,7 +650,7 @@ function doFloodStart() {
 function doFloodEnd() {
   state.plots.forEach((p, i) => {
     if (p.state === 'flooded') {
-      state.plots[i] = { state: 'empty', crop: null, plantedAt: null, watered: false, fertilized: false };
+      state.plots[i] = { state: 'empty', crop: null, plantedAt: null, watered: false, fertilized: false, wateredAt: null };
     }
   });
   state.weather.floodedRow = -1;
@@ -686,7 +710,6 @@ function tick() {
       if (isTimerFrozen()) { renderPlot(i); return; }
 
       const crop = CROPS[plot.crop || 'wheat'];
-      // Water speedup is baked into plantedAt at water-time, so no mult here
       let growMs = crop.growMs;
 
       // Crop-specific grow bonuses
@@ -695,11 +718,28 @@ function tick() {
       if (plot.crop === 'pumpkin' && isBadWeather) growMs *= getPumpkinWeatherMult();
       if (plot.crop === 'wheat' && affinityLevelFor('kalbi') >= 5) growMs *= 0.50;
 
-      // Mochi photosynth blocks overcast slowdown (flood already blocked via plot state)
+      // Fix A: Cap crop-specific bonuses at 30% of base grow time before water applies
+      // Prevents Kalbi+Cinna from collapsing wheat to sub-second grow times
+      growMs = Math.max(crop.growMs * 0.30, growMs);
+
+      // Mochi photosynth blocks overcast slowdown
       const effWeatherMult = (isPhotosynthActive() && weatherMult > 1.0) ? 1.0 : weatherMult;
       growMs *= effWeatherMult;
 
-      if (Date.now() - plot.plantedAt >= growMs) {
+      // Absolute minimum 10s regardless of anything
+      growMs = Math.max(10000, growMs);
+
+      // Compute elapsed accounting for water speedup (wateredAt approach)
+      const now_t    = Date.now();
+      let elapsed    = now_t - plot.plantedAt;
+      if (plot.watered && plot.wateredAt) {
+        const speedup            = getWaterSpeedup() ?? WATER_SPEEDUP;
+        const elapsedBeforeWater = Math.max(0, plot.wateredAt - plot.plantedAt);
+        const elapsedAfterWater  = Math.max(0, now_t - plot.wateredAt);
+        elapsed = elapsedBeforeWater + elapsedAfterWater / speedup;
+      }
+
+      if (elapsed >= growMs) {
         plot.state = 'ready';
         changed    = true;
         if (!notifiedPlots.has(i)) {
@@ -937,8 +977,18 @@ function init() {
   state.plots.forEach(plot => {
     if (plot.state === 'planted') {
       const crop   = CROPS[plot.crop || 'wheat'];
-        const growMs = crop.growMs; // water speedup baked into plantedAt
-      if (Date.now() - plot.plantedAt >= growMs) plot.state = 'ready';
+        let growMs = crop.growMs;
+      growMs = Math.max(crop.growMs * 0.30, growMs);
+      growMs = Math.max(10000, growMs);
+      const now_c = Date.now();
+      let elapsedC = now_c - plot.plantedAt;
+      if (plot.watered && plot.wateredAt) {
+        const sp = getWaterSpeedup() ?? WATER_SPEEDUP;
+        const bw = Math.max(0, plot.wateredAt - plot.plantedAt);
+        const aw = Math.max(0, now_c - plot.wateredAt);
+        elapsedC = bw + aw / sp;
+      }
+      if (elapsedC >= growMs) plot.state = 'ready';
     }
   });
 

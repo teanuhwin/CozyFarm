@@ -21,8 +21,8 @@ function npcLevel(id) {
 function wheatSellPrice()   { const l=npcLevel('kalbi');   return l>=3?13:l>=1?11:10; }
 function cornSellPrice()    { const l=npcLevel('twins');   return l>=3?52:l>=1?46:40; }
 function pumpkinSellPrice() { const l=npcLevel('maru');    return l>=3?112:l>=1?92:80; }
-function truffleSellPrice() { const l=npcLevel('ellie');   return l>=5?500:l>=3?275:l>=1?242:220; }
-function waterSpeedupPct()  { const l=npcLevel('cinna');   return l>=5?85:l>=3?60:l>=1?45:35; }
+function truffleSellPrice() { const l=npcLevel('ellie');   return l>=5?Math.round(220*2.20):l>=3?275:l>=1?242:220; }
+function waterSpeedupPct()  { const l=npcLevel('cinna');   return l>=5?70:l>=3?60:l>=1?45:35; }
 function hoseCost()         { const l=npcLevel('cinna');   return l>=2?140:200; }
 function fertYieldAmt()     { const l=npcLevel('kola');    return l>=3?5:l>=1?3:2; }
 function bigFertCost()      { const l=npcLevel('kola');    return l>=2?190:280; }
@@ -127,17 +127,25 @@ export function renderPlot(idx) {
     bar.style.width   = '0%';
     mods.textContent  = '';
   } else {
-    const crop   = CROPS[plot.crop || 'wheat'];
-    const growMs = plot.watered ? crop.growMs * 0.65 : crop.growMs;
+    const crop = CROPS[plot.crop || 'wheat'];
 
     if (plot.state === 'planted') {
       emoji.textContent = crop.seedling;
-      const weatherMult     = currentWeatherMultiplier();
-      // Use base water speedup for progress bar (NPC bonus handled in main.js tick)
-      const baseGrowMs      = plot.watered ? crop.growMs * 0.65 : crop.growMs;
-      const elapsed         = Date.now() - plot.plantedAt;
-      const effectiveGrowMs = baseGrowMs * weatherMult;
-      const pct             = Math.min(100, (elapsed / effectiveGrowMs) * 100);
+      const weatherMult = currentWeatherMultiplier();
+      // Mirror tick loop: 30% floor then weather mult then 10s absolute
+      let effectiveGrowMs = Math.max(crop.growMs * 0.30, crop.growMs);
+      effectiveGrowMs = Math.max(10000, effectiveGrowMs * weatherMult);
+      // Compute elapsed using wateredAt
+      const now_r = Date.now();
+      let effectiveElapsed = now_r - plot.plantedAt;
+      if (plot.watered && plot.wateredAt) {
+        const speedup = (typeof getWaterSpeedup === 'function' && getWaterSpeedup() !== null)
+          ? getWaterSpeedup() : 0.65;
+        const bw = Math.max(0, plot.wateredAt - plot.plantedAt);
+        const aw = Math.max(0, now_r - plot.wateredAt);
+        effectiveElapsed = bw + aw / speedup;
+      }
+      const pct = Math.min(100, (effectiveElapsed / effectiveGrowMs) * 100);
       bar.style.width   = pct + '%';
       label.textContent = crop.name;
       timer.textContent = '';
@@ -737,8 +745,12 @@ export function updateMerchantUI() {
         const timeStr = uses || (mins !== null ? `${mins}m` : '');
         effBadge.textContent = `${eff.icon} ${eff.label}${timeStr ? ' · ' + timeStr : ''}`;
         effBadge.style.display = 'flex';
+        const pill2 = el('grid-size-badge');
+        if (pill2) pill2.style.display = 'none';
       } else {
         effBadge.style.display = 'none';
+        const pill2 = el('grid-size-badge');
+        if (pill2) pill2.style.display = '';
       }
     }
 
@@ -783,8 +795,12 @@ export function tickMerchantBadge() {
     }
     effBadge.textContent  = `${eff.icon} ${eff.label}${timeStr ? ' · ' + timeStr : ''}`;
     effBadge.style.display = 'flex';
+    const pill = el('grid-size-badge');
+    if (pill) pill.style.display = 'none';
   } else {
     effBadge.style.display = 'none';
+    const pill = el('grid-size-badge');
+    if (pill) pill.style.display = '';
   }
 }
 

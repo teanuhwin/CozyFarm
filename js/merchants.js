@@ -1,6 +1,7 @@
 // ── MERCHANT MODULE ───────────────────────────────────────
 // Mochi (☀️) and Moto (🌙) — roaming merchant siblings
 import { state, saveState, randInt } from './state.js';
+import { CAPSTONE_COIN_COSTS } from './npcs.js';
 import { toast } from './ui.js';
 
 // ── CONSTANTS ─────────────────────────────────────────────
@@ -8,11 +9,10 @@ import { toast } from './ui.js';
 // Grid-size-based cost for Mochi (Moto = half)
 function mochiCost() {
   const plots = state.rows * state.cols;
-  if (plots <= 4)  return 500;
-  if (plots <= 9)  return 1000;
-  if (plots <= 16) return 2000;
-  if (plots <= 25) return 3500;
-  return 5000; // 6x6 max grid
+  const gridBase = plots <= 4 ? 500 : plots <= 9 ? 1000 : plots <= 16 ? 2000 : plots <= 25 ? 3500 : 5000;
+  // Scale with lifetime coins above 500K so merchants feel costly in late game
+  const lifetimeBased = Math.floor((state.lifetimeCoins || 0) * 0.005);
+  return Math.max(gridBase, Math.min(lifetimeBased, 50000));
 }
 
 const MERCHANT_STAY_MS   = 10 * 60 * 1000;  // 10 min to act before auto-dismiss

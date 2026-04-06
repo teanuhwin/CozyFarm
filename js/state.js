@@ -46,8 +46,11 @@ export const ACHIEVEMENTS = [
   { id:'harvest_10000',   icon:'🌾', name:'Legendary Farmer', desc:'Harvest 10,000 crops total',        check: s => (s.stats.totalHarvests||0) >= 10000 },
   { id:'earn_100',        icon:'🪙', name:'Pocket Change',   desc:'Earn 100 coins lifetime',          check: s => (s.lifetimeCoins||0) >= 100 },
   { id:'earn_1000',       icon:'💰', name:'Golden Harvest',  desc:'Earn 1,000 coins lifetime',        check: s => (s.lifetimeCoins||0) >= 1000 },
-  { id:'earn_10000',      icon:'🤑', name:'Truffle Tycoon',  desc:'Earn 10,000 coins lifetime',       check: s => (s.lifetimeCoins||0) >= 10000 },
-  { id:'earn_1000000',    icon:'💎', name:'Millionaire',      desc:'Earn 1,000,000 coins lifetime',     check: s => (s.lifetimeCoins||0) >= 1000000 },
+  { id:'earn_10000',      icon:'🤑', name:'Truffle Tycoon',    desc:'Earn 10,000 coins lifetime',         check: s => (s.lifetimeCoins||0) >= 10000 },
+  { id:'earn_100000',     icon:'🏅', name:'High Roller',       desc:'Earn 100,000 coins lifetime',        check: s => (s.lifetimeCoins||0) >= 100000 },
+  { id:'earn_500000',     icon:'💰', name:'Half-Millionaire',  desc:'Earn 500,000 coins lifetime',        check: s => (s.lifetimeCoins||0) >= 500000 },
+  { id:'earn_1000000',    icon:'💎', name:'Millionaire',        desc:'Earn 1,000,000 coins lifetime',      check: s => (s.lifetimeCoins||0) >= 1000000 },
+  { id:'earn_5000000',    icon:'👑', name:'Legendary Tycoon',  desc:'Earn 5,000,000 coins lifetime',      check: s => (s.lifetimeCoins||0) >= 5000000 },
   { id:'survive_thunder', icon:'⛈️', name:'Storm Survivor',  desc:'Survive a thunderstorm',           check: s => (s.stats.thunderSurvived||0) >= 1 },
   { id:'survive_flood',   icon:'🌊', name:'Flood Survivor',  desc:'Survive a flood',                  check: s => (s.stats.floodSurvived||0) >= 1 },
   { id:'rain_watered',    icon:'🌧️', name:'Free Water',      desc:'Have plots watered by rain',       check: s => (s.stats.rainWateredPlots||0) >= 1 },
@@ -72,9 +75,11 @@ export const GLOVES_CHANCE   = 0.60;
 
 export const BARN_BASE_CAP = 20;
 export const BARN_UPGRADES = [
-  { cap: 40,  cost: 60  },
-  { cap: 60,  cost: 150 },
-  { cap: 100, cost: 350 },
+  { cap: 40,  cost: 60   },
+  { cap: 60,  cost: 150  },
+  { cap: 100, cost: 350  },
+  { cap: 150, cost: 2500 },
+  { cap: 200, cost: 8000 },
 ];
 
 export const EXPAND_BASE = 50;
