@@ -732,6 +732,7 @@ function tick() {
   });
 
   if (changed) { saveState(); updateShopUI(); }
+  updateBegZone();
 }
 
 // ── MODAL / RESET ─────────────────────────────────────────
