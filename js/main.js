@@ -166,16 +166,38 @@ function clickPlot(idx) {
     harvestPlot(idx);
   }
 }
-/* --OLD CODE--
+
 function showPlotOptions(idx) {
   const plot         = state.plots[idx];
   const crop         = CROPS[plot.crop];
   const elapsed      = Date.now() - plot.plantedAt;
   const weatherMult  = currentWeatherMultiplier();
+  
+  /* OLD CODE
   let growMs = crop.growMs;
   // Apply same 30% floor as tick loop
   growMs = Math.max(crop.growMs * 0.30, growMs);
   growMs = Math.max(10000, growMs * weatherMult);
+  */
+  let growMs = crop.growMs;
+
+  // 1. Apply NPC crop-specific bonuses BEFORE the 30% floor
+  if (plot.crop === 'truffle') growMs *= getTruffleGrowMult();
+  if (plot.crop === 'corn')    growMs *= getCornGrowMult();
+  
+  const currentWeather = (state.weather && state.weather.current) || 'clear';
+  const isBadWeather = ['rain', 'thunder', 'flood'].includes(currentWeather);
+  if (plot.crop === 'pumpkin' && isBadWeather) growMs *= getPumpkinWeatherMult();
+  if (plot.crop === 'wheat' && (typeof affinityLevelFor === 'function' && affinityLevelFor('kalbi') >= 5)) growMs *= 0.50;
+
+  // 2. Apply the 30% floor AFTER crop bonuses
+  growMs = Math.max(crop.growMs * 0.30, growMs);
+
+  // 3. Apply weather (accounting for Photosynthesis) and the 10s absolute floor
+  const effWeatherMult = (isPhotosynthActive() && weatherMult > 1.0) ? 1.0 : weatherMult;
+  growMs = Math.max(10000, growMs * effWeatherMult);
+
+  
   // Compute elapsed with water speedup
   let effectiveElapsed = elapsed;
   if (plot.watered && plot.wateredAt) {
@@ -198,55 +220,7 @@ function showPlotOptions(idx) {
 
   toast(`⏳ ${formatTime(remaining)} left${modStr}${hintStr}`);
 }
-*/
-function showPlotOptions(idx) {
-  const plot         = state.plots[idx];
-  const crop         = CROPS[plot.crop];
-  const elapsed      = Date.now() - plot.plantedAt;
-  
-  // 1. Start with base growth time
-  let growMs = crop.growMs;
 
-  // 2. Apply NPC crop-specific bonuses to mirror the tick loop
-  if (plot.crop === 'truffle') growMs *= getTruffleGrowMult();
-  if (plot.crop === 'corn')    growMs *= getCornGrowMult();
-  
-  const currentWeather = (state.weather && state.weather.current) || 'clear';
-  const isBadWeather = ['rain', 'thunder', 'flood'].includes(currentWeather);
-  if (plot.crop === 'pumpkin' && isBadWeather) growMs *= getPumpkinWeatherMult();
-  if (plot.crop === 'wheat' && (typeof affinityLevelFor === 'function' && affinityLevelFor('kalbi') >= 5)) growMs *= 0.50;
-
-  // 3. Apply the 30% floor AFTER crop bonuses
-  growMs = Math.max(crop.growMs * 0.30, growMs);
-
-  // 4. Apply weather (accounting for Photosynthesis) and 10s floor
-  const weatherMult = currentWeatherMultiplier();
-  const effWeatherMult = (isPhotosynthActive() && weatherMult > 1.0) ? 1.0 : weatherMult;
-  growMs = Math.max(10000, growMs * effWeatherMult);
-
-  // 5. Compute elapsed with your updated water speedup multiplier
-  let effectiveElapsed = elapsed;
-  if (plot.watered && plot.wateredAt) {
-    const speedup = getWaterSpeedup() ?? WATER_SPEEDUP;
-    const beforeWater = Math.max(0, plot.wateredAt - plot.plantedAt);
-    const afterWater  = Math.max(0, Date.now() - plot.wateredAt);
-    effectiveElapsed  = beforeWater + (afterWater * speedup);
-  }
-
-  const remaining = Math.max(0, Math.ceil((growMs - effectiveElapsed) / 1000));
-
-  const mods = [];
-  if (plot.watered)    mods.push('💧 watered');
-  if (plot.fertilized) mods.push('🌿 fertilized');
-  const modStr  = mods.length ? ` · ${mods.join(' · ')}` : '';
-
-  const hints = [];
-  if (!plot.watered    && (state.water      || 0) > 0) hints.push('use 💧 water mode');
-  if (!plot.fertilized && (state.fertilizer || 0) > 0) hints.push('use 🌿 fert mode');
-  const hintStr = hints.length ? `\n${hints.join(' · ')}` : '';
-
-  toast(`⏳ ${formatTime(remaining)} left${modStr}${hintStr}`);
-}
 
 function harvestPlot(idx) {
   // Moto sticky fingers: throttle harvests to 1 per 10s
