@@ -76,10 +76,8 @@ export const GLOVES_CHANCE   = 0.60;
 export const BARN_BASE_CAP = 20;
 export const BARN_UPGRADES = [
   { cap: 40,  cost: 60   },
-  { cap: 60,  cost: 150  },
-  { cap: 100, cost: 350  },
-  { cap: 150, cost: 2500 },
-  { cap: 200, cost: 8000 },
+  { cap: 60,  cost: 600  },
+  { cap: 100, cost: 3000  }
 ];
 
 export const EXPAND_BASE = 50;
