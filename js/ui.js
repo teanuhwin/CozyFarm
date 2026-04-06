@@ -761,6 +761,33 @@ export function updateMerchantUI() {
   });
 }
 
+/** Called every second from the tick loop to update the effect countdown. */
+export function tickMerchantBadge() {
+  const effBadge = el('merchant-effect-badge');
+  if (!effBadge) return;
+  const m   = state.merchant;
+  const eff = m && m.effect;
+  const now = Date.now();
+  if (eff && eff.id && (!eff.expiresAt || now < eff.expiresAt)) {
+    let timeStr = '';
+    if (eff.usesLeft !== undefined) {
+      timeStr = `${eff.usesLeft} use${eff.usesLeft !== 1 ? 's' : ''} left`;
+    } else if (eff.expiresAt) {
+      const secsLeft = Math.max(0, Math.ceil((eff.expiresAt - now) / 1000));
+      const h = Math.floor(secsLeft / 3600);
+      const m2 = Math.floor((secsLeft % 3600) / 60);
+      const s = secsLeft % 60;
+      if (h > 0)       timeStr = `${h}h ${m2}m`;
+      else if (m2 > 0) timeStr = `${m2}m ${s}s`;
+      else             timeStr = `${s}s`;
+    }
+    effBadge.textContent  = `${eff.icon} ${eff.label}${timeStr ? ' · ' + timeStr : ''}`;
+    effBadge.style.display = 'flex';
+  } else {
+    effBadge.style.display = 'none';
+  }
+}
+
 export function openMerchantModal(who) {
   import('./merchants.js').then(M => {
     const modal = el('merchant-modal');

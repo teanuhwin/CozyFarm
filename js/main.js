@@ -20,7 +20,7 @@ import {
   getGlovesUses, getGlovesChance,
   getWheatSellMult, getWheatYieldBonus, getWheatWeatherImmune,
   getTruffleSellPrice, getTruffleGrowMult, getTruffleMinYield,
-  getCornYieldBonus, getCornSellMult, getCornGrowMult,
+  getCornYieldBonus, getCornSellMult, getCornGrowMult, rollCornInstant,
   getPumpkinSellMult, getPumpkinWeatherMult,
   getWaterSpeedup, getWaterHoseCost, getWaterHoseAreaBoost,
   getFertYield, getBigFertCost, getBigFertYield, getFertInstantChance,
@@ -39,7 +39,7 @@ import {
   updateHint, updateBegZone, updateShopUI,
   updateWeatherBanner, updateTownVisibility, updateTownBadge,
   renderTownTab, tickTownCooldowns, renderLogTab,
-  updateMerchantUI, openMerchantModal,
+  updateMerchantUI, openMerchantModal, tickMerchantBadge,
 } from './ui.js';
 
 // ── INTERACTION STATE ─────────────────────────────────────
@@ -65,6 +65,16 @@ function selectTool(tool) {
   updateFarmToolbar(selectedCrop, selectedTool);
 }
 
+
+/** Bake the water speedup into plantedAt so the timer is frozen-proof. */
+function applyWaterSpeedup(plot) {
+  const crop     = CROPS[plot.crop || 'wheat'];
+  const speedup  = getWaterSpeedup() ?? WATER_SPEEDUP;
+  // Time saved = growMs * (1 - speedup) scaled to how far through we are
+  // Simpler: shift plantedAt back by growMs*(1-speedup) so remaining time shrinks
+  const timeSaved = crop.growMs * (1 - speedup);
+  plot.plantedAt  = plot.plantedAt - timeSaved;
+}
 // ── PLOT INTERACTIONS ─────────────────────────────────────
 function clickPlot(idx) {
   const plot = state.plots[idx];
@@ -77,6 +87,7 @@ function clickPlot(idx) {
     if ((state.water || 0) < 1) { toast('No water! Buy some in the Shop.'); return; }
     state.water--;
     plot.watered = true;
+    applyWaterSpeedup(plot);
     state.stats.totalWatered = (state.stats.totalWatered || 0) + 1;
     saveState();
     renderPlot(idx);
@@ -126,6 +137,11 @@ function clickPlot(idx) {
     plot.plantedAt  = Date.now();
     plot.watered    = false;
     plot.fertilized = false;
+    // Twins L4: 10% chance corn grows instantly — roll once at plant time
+    if (selectedCrop === 'corn' && rollCornInstant()) {
+      plot.state = 'ready';
+      toast('⚡ Chaos Corn! This one grew instantly!');
+    }
     saveState();
     renderPlot(idx);
     updateHeader();
@@ -142,7 +158,8 @@ function showPlotOptions(idx) {
   const crop         = CROPS[plot.crop];
   const elapsed      = Date.now() - plot.plantedAt;
   const weatherMult  = currentWeatherMultiplier();
-  const baseGrowMs   = plot.watered ? crop.growMs * (getWaterSpeedup() ?? WATER_SPEEDUP) : crop.growMs;
+  // Water speedup is baked into plantedAt, so just use base growMs
+  const baseGrowMs   = crop.growMs;
   const growMs       = baseGrowMs * weatherMult;
   const remaining    = Math.max(0, Math.ceil((growMs - elapsed) / 1000));
 
@@ -394,12 +411,12 @@ function buyWaterHose() {
   state.coins -= cost;
   // Cinna L5: 2×2 area boost — water affects each plot + its neighbours
   if (getWaterHoseAreaBoost()) {
-    state.plots.forEach(p => { if (p.state === 'planted') p.watered = true; });
+    state.plots.forEach(p => { if (p.state === 'planted' && !p.watered) { p.watered = true; applyWaterSpeedup(p); } });
     const wetted = state.plots.filter(p => p.state === 'planted' && p.watered).length;
     saveState(); renderGrid(); updateHeader(); updateShopUI();
     toast(`💧✨ Torrent! All ${wetted} plots soaked${cost === 0 ? ' (free!)' : ''}!`);
   } else {
-    targets.forEach(p => { p.watered = true; });
+    targets.forEach(p => { p.watered = true; applyWaterSpeedup(p); });
     saveState(); renderGrid(); updateHeader(); updateShopUI();
     toast(`💧 Watered all ${targets.length} growing plot${targets.length > 1 ? 's' : ''}!${cost === 0 ? ' (free!)' : ''}`);
   }
@@ -532,7 +549,7 @@ function onWeatherStart(id) {
 function doRainWater() {
   let count = 0;
   state.plots.forEach(p => {
-    if (p.state === 'planted' && !p.watered) { p.watered = true; count++; }
+    if (p.state === 'planted' && !p.watered) { p.watered = true; applyWaterSpeedup(p); count++; }
   });
   state.weather.lastRainAt = Date.now();
   state.stats.rainWateredPlots = (state.stats.rainWateredPlots || 0) + count;
@@ -654,6 +671,7 @@ function tick() {
   tickWeather();
   tickNpcs();
   tickMerchants();
+  tickMerchantBadge();
   tickTownCooldowns();
 
   const weatherMult = currentWeatherMultiplier();
@@ -668,8 +686,8 @@ function tick() {
       if (isTimerFrozen()) { renderPlot(i); return; }
 
       const crop = CROPS[plot.crop || 'wheat'];
-      const waterMult = plot.watered ? (getWaterSpeedup() ?? WATER_SPEEDUP) : 1.0;
-      let growMs = crop.growMs * waterMult;
+      // Water speedup is baked into plantedAt at water-time, so no mult here
+      let growMs = crop.growMs;
 
       // Crop-specific grow bonuses
       if (plot.crop === 'truffle') growMs *= getTruffleGrowMult();
@@ -742,6 +760,55 @@ function doReset() {
   updateMerchantUI();
   closeModal();
   toast('🌱 Farm reset! Starting fresh.');
+}
+
+// ── SAVE / LOAD ───────────────────────────────────────────
+function downloadSave() {
+  const data = JSON.stringify(state, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const date = new Date().toISOString().slice(0, 10);
+  a.href     = url;
+  a.download = `cozyfarm-save-${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('💾 Save downloaded!');
+}
+
+function uploadSave(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      // Basic validation: must have coins and plots
+      if (typeof parsed.coins !== 'number' || !Array.isArray(parsed.plots)) {
+        toast('❌ Invalid save file.');
+        return;
+      }
+      Object.assign(state, parsed);
+      migrateState();
+      migrateNpcs();
+      initPlots();
+      saveState();
+      renderGrid();
+      updateHeader();
+      updateShopUI();
+      updateFarmToolbar(selectedCrop, selectedTool);
+      updateWeatherBanner();
+      updateHint();
+      updateBegZone();
+      updateTownVisibility();
+      updateTownBadge();
+      updateMerchantUI();
+      checkAchievements();
+      toast('✅ Save loaded! Welcome back.');
+    } catch (err) {
+      toast('❌ Could not read save file.');
+    }
+  };
+  reader.readAsText(file);
 }
 
 // ── EVENT DELEGATION ──────────────────────────────────────
@@ -824,6 +891,13 @@ function wireEvents() {
   document.querySelector('[data-action="close-modal"]').addEventListener('click',   closeModal);
   document.querySelector('[data-action="do-reset"]').addEventListener('click',      doReset);
 
+  // Save / Load
+  document.getElementById('download-save-btn').addEventListener('click', downloadSave);
+  document.getElementById('upload-save-input').addEventListener('change', function() {
+    uploadSave(this.files[0]);
+    this.value = ''; // reset so same file can be re-uploaded
+  });
+
   // Merchant icons → open modal
   document.getElementById('merchant-mochi').addEventListener('click', () => openMerchantModal('mochi'));
   document.getElementById('merchant-moto').addEventListener('click',  () => openMerchantModal('moto'));
@@ -863,8 +937,7 @@ function init() {
   state.plots.forEach(plot => {
     if (plot.state === 'planted') {
       const crop   = CROPS[plot.crop || 'wheat'];
-      const waterMult = plot.watered ? (getWaterSpeedup() ?? WATER_SPEEDUP) : 1.0;
-      const growMs = crop.growMs * waterMult;
+        const growMs = crop.growMs; // water speedup baked into plantedAt
       if (Date.now() - plot.plantedAt >= growMs) plot.state = 'ready';
     }
   });

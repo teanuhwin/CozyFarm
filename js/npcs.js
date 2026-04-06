@@ -437,8 +437,12 @@ export function getCornSellMult() {
 export function getCornGrowMult() {
   const lvl = affinityLevel('twins');
   if (lvl >= 5) return 0.50;
-  if (lvl >= 4 && Math.random() < 0.10) return 0; // instant
-  return 1.0;
+  return 1.0; // L4 instant-grow is rolled once at plant time in main.js
+}
+
+/** Roll the L4 10% instant-grow chance once. Call only at plant time. */
+export function rollCornInstant() {
+  return affinityLevel('twins') >= 4 && Math.random() < 0.10;
 }
 
 export function getPumpkinSellMult() {

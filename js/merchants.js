@@ -191,44 +191,56 @@ export function tickMerchants() {
 
   // 1. Expire active effect
   if (m.effect && m.effect.expiresAt && now >= m.effect.expiresAt) {
-    const label = m.effect.label || 'Effect';
+    const label    = m.effect.label || 'Effect';
+    const wasFrozen = m.effect.id === 'frozen' && m.effect.frozenAt;
+    const frozenDuration = wasFrozen ? (m.effect.expiresAt - m.effect.frozenAt) : 0;
     m.effect = null;
+    // Shift all planted crop timers forward by the frozen duration so they
+    // don't gain "free" growth time while soil was frozen
+    if (frozenDuration > 0) {
+      state.plots.forEach(p => {
+        if (p.state === 'planted' && p.plantedAt) {
+          p.plantedAt += frozenDuration;
+        }
+      });
+    }
+    if (!m.nextVisitAt || m.nextVisitAt <= now) {
+      m.nextVisitAt = now + randInt(VISIT_WINDOW_MIN, VISIT_WINDOW_MAX);
+    }
     saveState();
     toast(`⏰ ${label} has worn off.`);
     import('./ui.js').then(({ updateMerchantUI }) => updateMerchantUI());
-    // Schedule next visit (no effect active now)
-    if (!m.nextVisitAt || m.nextVisitAt < now) {
-      m.nextVisitAt = now + randInt(VISIT_WINDOW_MIN, VISIT_WINDOW_MAX);
-      saveState();
-    }
     return;
   }
 
-  // 2. Don't visit while an effect is active
+  // 2. Don't spawn a new merchant while an effect is active
   if (m.effect) return;
 
-  // 3. Auto-dismiss if merchant has been waiting too long
-  if (m.active && now - m.arrivedAt >= MERCHANT_STAY_MS) {
-    const who = m.active;
-    m.active = null;
-    // Schedule sibling
+  // 3. Auto-dismiss if merchant has been waiting too long without action
+  if (m.active && m.arrivedAt > 0 && now - m.arrivedAt >= MERCHANT_STAY_MS) {
+    const who    = m.active;
+    const icon   = who === 'mochi' ? '☀️' : '🌙';
+    const name   = who === 'mochi' ? 'Mochi' : 'Moto';
     const sibling = who === 'mochi' ? 'moto' : 'mochi';
+    m.active       = null;
+    m.arrivedAt    = 0;
+    m.activeItemId = null;
+    m.activeRiddleId = null;
     m.nextMerchant = sibling;
     m.nextVisitAt  = now + randInt(SIBLING_DELAY_MIN, SIBLING_DELAY_MAX);
     saveState();
-    toast(`${who === 'mochi' ? '☀️' : '🌙'} ${who === 'mochi' ? 'Mochi' : 'Moto'} left — no time to wait!`);
+    toast(`${icon} ${name} left — no time to wait! ${sibling === 'mochi' ? '☀️' : '🌙'} sibling coming soon.`);
     import('./ui.js').then(({ updateMerchantUI }) => updateMerchantUI());
     return;
   }
 
-  // 4. Spawn next merchant
-  if (!m.active && m.nextVisitAt && now >= m.nextVisitAt) {
+  // 4. Spawn next merchant when timer fires and nobody is active
+  if (!m.active && m.nextVisitAt > 0 && now >= m.nextVisitAt) {
     const who = m.nextMerchant || (Math.random() < 0.5 ? 'mochi' : 'moto');
-    m.active      = who;
-    m.arrivedAt   = now;
-    m.nextVisitAt = 0;
-    m.nextMerchant = null;
-    // Pick a random single item/riddle for this visit
+    m.active         = who;
+    m.arrivedAt      = now;
+    m.nextVisitAt    = 0;
+    m.nextMerchant   = null;
     if (who === 'mochi') {
       const items = ['helios', 'sundial', 'lightleaf', 'photosynth'];
       m.activeItemId   = items[Math.floor(Math.random() * items.length)];
@@ -239,16 +251,16 @@ export function tickMerchants() {
       m.activeItemId   = null;
     }
     saveState();
-    const icon    = who === 'mochi' ? '☀️' : '🌙';
-    const name    = who === 'mochi' ? 'Mochi' : 'Moto';
+    const icon = who === 'mochi' ? '☀️' : '🌙';
+    const name = who === 'mochi' ? 'Mochi' : 'Moto';
     toast(`${icon} ${name} has arrived at your farm!`);
     import('./ui.js').then(({ updateMerchantUI }) => updateMerchantUI());
     return;
   }
 
-  // 5. First-time bootstrap — schedule first visit if never set
+  // 5. Bootstrap: schedule first visit when nothing is pending
   if (!m.active && !m.nextVisitAt && !m.effect) {
-    m.nextVisitAt = Date.now() + randInt(VISIT_WINDOW_MIN, VISIT_WINDOW_MAX);
+    m.nextVisitAt = now + randInt(VISIT_WINDOW_MIN, VISIT_WINDOW_MAX);
     saveState();
   }
 }
@@ -372,7 +384,8 @@ export function buyMotoRiddle(riddleId) {
       toast(`💸 ${b.label}! Moto took ${tax.toLocaleString()} 🪙…`);
     } else if (riddle.effect_bad === 'instant_growth') {
       // Frozen soil
-      m.effect = { id: 'frozen', label: 'Frozen Soil', icon: '🧊', expiresAt: Date.now() + FROZEN_DURATION };
+      const frozenNow = Date.now();
+      m.effect = { id: 'frozen', label: 'Frozen Soil', icon: '🧊', expiresAt: frozenNow + FROZEN_DURATION, frozenAt: frozenNow };
       toast(`🧊 ${b.label}! All timers frozen for 30 min!`);
     } else {
       // Other timed debuffs
