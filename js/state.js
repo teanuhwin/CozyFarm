@@ -65,7 +65,7 @@ export const ACHIEVEMENTS = [
 
 export const WATER_COST      = 6;
 export const WATER_HOSE_COST = 200;
-export const WATER_SPEEDUP   = 0.65;
+export const WATER_SPEEDUP   = 1.35;
 export const FERT_COST       = 8;
 export const BIG_FERT_COST   = 280;
 export const FERT_YIELD      = 2;

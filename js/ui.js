@@ -140,10 +140,10 @@ export function renderPlot(idx) {
       let effectiveElapsed = now_r - plot.plantedAt;
       if (plot.watered && plot.wateredAt) {
         const speedup = (typeof getWaterSpeedup === 'function' && getWaterSpeedup() !== null)
-          ? getWaterSpeedup() : 0.65;
+          ? getWaterSpeedup() : 1.35;
         const bw = Math.max(0, plot.wateredAt - plot.plantedAt);
         const aw = Math.max(0, now_r - plot.wateredAt);
-        effectiveElapsed = bw + aw / speedup;
+        effectiveElapsed = bw + (aw * speedup);
       }
       const pct = Math.min(100, (effectiveElapsed / effectiveGrowMs) * 100);
       bar.style.width   = pct + '%';

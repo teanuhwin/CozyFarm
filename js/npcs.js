@@ -460,10 +460,10 @@ export function getPumpkinWeatherMult() {
 
 export function getWaterSpeedup() {
   const lvl = affinityLevel('cinna');
-  if (lvl >= 5) return 0.30; // 70% faster (crops take 30% of base time)
-  if (lvl >= 3) return 0.40; // 60% faster
-  if (lvl >= 1) return 0.55; // 45% faster
-  return null; // base 35% faster (WATER_SPEEDUP = 0.65)
+  if (lvl >= 5) return 1.70; // 70% faster (crops take 30% of base time)
+  if (lvl >= 3) return 1.60; // 60% faster
+  if (lvl >= 1) return 1.45; // 45% faster
+  return null; // base 35% faster (WATER_SPEEDUP = 1.35)
 }
 
 export function getWaterHoseCost(base) {

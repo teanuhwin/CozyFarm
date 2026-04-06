@@ -182,7 +182,7 @@ function showPlotOptions(idx) {
     const speedup = getWaterSpeedup() ?? WATER_SPEEDUP;
     const beforeWater = Math.max(0, plot.wateredAt - plot.plantedAt);
     const afterWater  = Math.max(0, Date.now() - plot.wateredAt);
-    effectiveElapsed  = beforeWater + afterWater / speedup;
+    effectiveElapsed  = beforeWater + afterWater * speedup;
   }
   const remaining = Math.max(0, Math.ceil((growMs - effectiveElapsed) / 1000));
 
@@ -736,7 +736,7 @@ function tick() {
         const speedup            = getWaterSpeedup() ?? WATER_SPEEDUP;
         const elapsedBeforeWater = Math.max(0, plot.wateredAt - plot.plantedAt);
         const elapsedAfterWater  = Math.max(0, now_t - plot.wateredAt);
-        elapsed = elapsedBeforeWater + elapsedAfterWater / speedup;
+        elapsed = elapsedBeforeWater + (elapsedAfterWater * speedup);
       }
 
       if (elapsed >= growMs) {
