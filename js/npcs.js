@@ -167,7 +167,7 @@ export const NPC_DATA = {
       'Big Fertilizer cost reduced to 190 🪙',
       'Fertilizer yield increased to +5',
       '20% chance for Big Fertilizer to be free',
-      '✨ ULTIMATE: Big Fertilizer yield +8 + 25% chance Fertilizer triggers instant growth!',
+      '✨ ULTIMATE: Big Fertilizer yield +5 + 25% chance Fertilizer triggers instant growth!',
     ],
     requests: [
       { type: 'crop', cropKey: 'pumpkin', text: 'The Moon is hungry. It has requested {qty} 🎃 Pumpkins. Do not ask why the Moon eats.' },
