@@ -183,6 +183,8 @@ function showPlotOptions(idx) {
   });
   const waterSpeedup = getWaterSpeedup() ?? WATER_SPEEDUP;
   const effectiveElapsed = computeEffectiveElapsed(plot, waterSpeedup);
+  
+  /* OLD CODE
   const remainingEffectiveMs = Math.max(0, growMs - effectiveElapsed);
   // Convert back to real wall-clock seconds: if watered, effective time runs faster
   // so real ms remaining = effective ms remaining * speedup fraction
@@ -190,6 +192,20 @@ function showPlotOptions(idx) {
     ? remainingEffectiveMs * waterSpeedup
     : remainingEffectiveMs;
   const remaining = Math.ceil(remainingRealMs / 1000);
+  */
+  
+//NEW CODE FIX
+  const remainingEffectiveMs = Math.max(0, growMs - effectiveElapsed);
+  
+  // FIXED: Explicitly use the speedup fraction for watered plots to convert 
+  // effective "growth points" back into real wall-clock milliseconds.
+  let remainingRealMs = remainingEffectiveMs;
+  if (plot.watered) {
+    remainingRealMs = remainingEffectiveMs * waterSpeedup;
+  }
+  
+  const remaining = Math.ceil(remainingRealMs / 1000);
+//END OF FIX
 
   const mods = [];
   if (plot.watered)    mods.push('💧 watered');
