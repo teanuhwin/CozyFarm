@@ -259,7 +259,7 @@ export function updateHint() {
 // ── BEG ZONE ──────────────────────────────────────────────
 export function updateBegZone() {
   const totalSeeds = (state.wheatSeeds||0)+(state.cornSeeds||0)+(state.pumpkinSeeds||0)+(state.truffleSeeds||0);
-  const broke = totalSeeds === 0 && state.coins === 0 && totalBarnContents() === 0;
+  const broke = totalSeeds === 0 && state.coins < 5 && totalBarnContents() === 0;
   const zone  = el('beg-zone');
   if (!zone) return;
   zone.style.display = broke ? 'block' : 'none';
