@@ -201,7 +201,9 @@ function showPlotOptions(idx) {
   // effective "growth points" back into real wall-clock milliseconds.
   let remainingRealMs = remainingEffectiveMs;
   if (plot.watered) {
-    remainingRealMs = remainingEffectiveMs * waterSpeedup;
+    const cinnaLvl = affinityLevelFor('cinna');
+    const waterFactor = cinnaLvl >= 5 ? 0.30 : cinnaLvl >= 3 ? 0.40 : cinnaLvl >= 1 ? 0.55 : 0.65;
+    remainingRealMs = remainingEffectiveMs * waterFactor;
   }
   
   const remaining = Math.ceil(remainingRealMs / 1000);
