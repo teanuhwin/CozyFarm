@@ -112,14 +112,14 @@ export const NPC_DATA = {
       "Hiss. (Crow: He's claimed an abandoned cabin as his No Dogs Allowed sanctuary. You funded the deed.)",
       "Mrow. (Crow: Maru is preparing for the Great Freeze. Your provisions are keeping him fed through the long prowl.)",
       "Mrrrow! (Crow: During a storm, he taught you how pumpkins grow faster in bad weather. I did most of the explaining, honestly.)",
-      "PRRR. (Crow: He performed the legendary Shadow Pounce. Harvesting one pumpkin now boosts all others growing nearby.)",
+      "PRRR. (Crow: He performed the legendary Shadow Pounce. Harvesting one pumpkin now scares the neighbors into dropping extras. I was not consulted on this.)",
     ],
     bonuses: [
       'Pumpkin sell price +15%',
       '10% chance to find a Truffle when harvesting Pumpkin',
       'Pumpkin sell price +40%',
       'Pumpkins grow 30% faster during bad weather',
-      '✨ ULTIMATE: Harvesting a Pumpkin gives +1 yield to all other growing Pumpkins!',
+      '✨ ULTIMATE: Shadow Pounce! Harvesting a Pumpkin scares up to 8 neighbors into dropping +1 Pumpkin each!',
     ],
     requests: [
       { type: 'crop', cropKey: 'truffle', text: "Meow! (Crow: The fuzz-ball says he's stockpiling for the Great Freeze. {qty} 🍄 Truffles should keep his belly full.)" },
@@ -460,10 +460,10 @@ export function getPumpkinWeatherMult() {
 
 export function getWaterSpeedup() {
   const lvl = affinityLevel('cinna');
-  if (lvl >= 5) return 1.70; // 70% faster (crops take 30% of base time)
-  if (lvl >= 3) return 1.60; // 60% faster
-  if (lvl >= 1) return 1.45; // 45% faster
-  return null; // base 35% faster (WATER_SPEEDUP = 1.35)
+  if (lvl >= 5) return 0.30; // 70% faster (crops take 30% of base time)
+  if (lvl >= 3) return 0.40; // 60% faster
+  if (lvl >= 1) return 0.55; // 45% faster
+  return null; // base 35% faster (WATER_SPEEDUP = 0.65)
 }
 
 export function getWaterHoseCost(base) {

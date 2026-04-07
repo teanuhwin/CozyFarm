@@ -183,21 +183,10 @@ function showPlotOptions(idx) {
   });
   const waterSpeedup = getWaterSpeedup() ?? WATER_SPEEDUP;
   const effectiveElapsed = computeEffectiveElapsed(plot, waterSpeedup);
-  
-  /* OLD CODE
+
   const remainingEffectiveMs = Math.max(0, growMs - effectiveElapsed);
-  // Convert back to real wall-clock seconds: if watered, effective time runs faster
-  // so real ms remaining = effective ms remaining * speedup fraction
-  const remainingRealMs = plot.watered && plot.wateredAt
-    ? remainingEffectiveMs * waterSpeedup
-    : remainingEffectiveMs;
-  const remaining = Math.ceil(remainingRealMs / 1000);
-  */
-  
-//NEW CODE FIX
-  const remainingEffectiveMs = Math.max(0, growMs - effectiveElapsed);
-  
-  // FIXED: Explicitly use the speedup fraction for watered plots to convert 
+
+  // FIXED: Explicitly use the speedup fraction for watered plots to convert
   // effective "growth points" back into real wall-clock milliseconds.
   let remainingRealMs = remainingEffectiveMs;
   if (plot.watered) {
@@ -205,9 +194,8 @@ function showPlotOptions(idx) {
     const waterFactor = cinnaLvl >= 5 ? 0.30 : cinnaLvl >= 3 ? 0.40 : cinnaLvl >= 1 ? 0.55 : 0.65;
     remainingRealMs = remainingEffectiveMs * waterFactor;
   }
-  
+
   const remaining = Math.ceil(remainingRealMs / 1000);
-//END OF FIX
 
   const mods = [];
   if (plot.watered)    mods.push('💧 watered');
@@ -282,14 +270,29 @@ function harvestPlot(idx) {
     }
   }
 
-  // Maru L5: +1 yield to all other growing pumpkins
+  // Maru L5: Shadow Pounce — harvesting a pumpkin scares the 8 neighbors in a 3×3
+  // grid, each yielding +1 pumpkin directly into the barn.
   if (cropKey === 'pumpkin' && affinityLevelFor('maru') >= 5) {
-    state.plots.forEach((p, i) => {
-      if (i !== idx && p.state !== 'empty' && p.crop === 'pumpkin') {
-        const s = barnCap() - totalBarnContents();
-        if (s > 0) { state.pumpkin = (state.pumpkin || 0) + 1; }
+    const harvestRow = Math.floor(idx / state.cols);
+    const harvestCol = idx % state.cols;
+    let scared = 0;
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (dr === 0 && dc === 0) continue; // skip the harvested plot itself
+        const r2 = harvestRow + dr;
+        const c2 = harvestCol + dc;
+        if (r2 < 0 || r2 >= state.rows || c2 < 0 || c2 >= state.cols) continue;
+        const neighbor = state.plots[r2 * state.cols + c2];
+        if (neighbor && neighbor.crop === 'pumpkin' && neighbor.state !== 'empty') {
+          const space = barnCap() - totalBarnContents();
+          if (space > 0) {
+            state.pumpkin = (state.pumpkin || 0) + 1;
+            scared++;
+          }
+        }
       }
-    });
+    }
+    if (scared > 0) toast(`👻 Shadow Pounce! Scared ${scared} neighbor${scared !== 1 ? 's' : ''} into dropping a pumpkin!`);
   }
 
   // Kola L5: fertilizer triggers instant growth (handled at fertilize time, but also
