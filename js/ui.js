@@ -40,6 +40,20 @@ let toastTimer;
 export function toast(msg) {
   const t = el('toast');
   t.textContent = msg;
+
+  // Dynamically position the toast to replace the 6x6 pill visual space if on the Farm Tab
+  // Use querySelector because grid-meta-center is a class, not an ID.
+  const center = document.querySelector('.grid-meta-center');
+  const farmTab = el('tab-farm');
+
+  if (center && farmTab && farmTab.classList.contains('active')) {
+    const rect = center.getBoundingClientRect();
+    t.style.top = Math.max(10, rect.top - 4) + 'px';
+  } else {
+    // Fallback position for shop, town, log, settings tabs
+    t.style.top = '100px';
+  }
+
   t.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
