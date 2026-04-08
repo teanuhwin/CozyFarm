@@ -460,8 +460,6 @@ main {
 /* ── TOAST ── */
 #toast {
   position: fixed;
-  /* Float centered over the grid-meta-row / pill area */
-  top: 178px;
   left: 50%;
   transform: translateX(-50%) translateY(-8px);
   width: max-content;
