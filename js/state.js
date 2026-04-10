@@ -185,7 +185,7 @@ export function expandCost(type) {
 export function initPlots() {
   const needed = state.rows * state.cols;
   while (state.plots.length < needed) {
-    state.plots.push({ state: 'empty', crop: null, plantedAt: null, watered: false, fertilized: false, wateredAt: null });
+    state.plots.push({ state: 'empty', crop: null, plantedAt: null, watered: false, fertilized: false, wateredAt: null, yieldRemaining: null });
   }
   state.plots = state.plots.slice(0, needed);
 }
@@ -222,19 +222,19 @@ export function migrateState() {
     state.wheatSeeds = state.seeds;
     delete state.seeds;
   }
-  if (!state.wheatSeeds)        state.wheatSeeds        = 5;
-  if (!state.cornSeeds)         state.cornSeeds         = 0;
-  if (!state.pumpkinSeeds)      state.pumpkinSeeds      = 0;
-  if (!state.truffleSeeds)      state.truffleSeeds      = 0;
-  if (!state.water)             state.water             = 0;
-  if (!state.fertilizer)        state.fertilizer        = 0;
-  if (!state.glovesDurability)  state.glovesDurability  = 0;
-  if (!state.wheat)             state.wheat             = 0;
-  if (!state.corn)              state.corn              = 0;
-  if (!state.pumpkin)           state.pumpkin           = 0;
-  if (!state.truffle)           state.truffle           = 0;
-  if (!state.barnLevel)         state.barnLevel         = 0;
-  if (!state.lifetimeCoins)     state.lifetimeCoins     = 0;
+  if (state.wheatSeeds        === undefined) state.wheatSeeds        = 5;
+  if (state.cornSeeds         === undefined) state.cornSeeds         = 0;
+  if (state.pumpkinSeeds      === undefined) state.pumpkinSeeds      = 0;
+  if (state.truffleSeeds      === undefined) state.truffleSeeds      = 0;
+  if (state.water             === undefined) state.water             = 0;
+  if (state.fertilizer        === undefined) state.fertilizer        = 0;
+  if (state.glovesDurability  === undefined) state.glovesDurability  = 0;
+  if (state.wheat             === undefined) state.wheat             = 0;
+  if (state.corn              === undefined) state.corn              = 0;
+  if (state.pumpkin           === undefined) state.pumpkin           = 0;
+  if (state.truffle           === undefined) state.truffle           = 0;
+  if (state.barnLevel         === undefined) state.barnLevel         = 0;
+  if (state.lifetimeCoins     === undefined) state.lifetimeCoins     = 0;
   if (!state.weather)           state.weather           = { current: 'clear', changedAt: Date.now(), lastRainAt: 0, lastThunderAt: 0, floodedRow: -1 };
   if (state.weather.lastRainAt    === undefined) state.weather.lastRainAt    = 0;
   if (state.weather.lastThunderAt === undefined) state.weather.lastThunderAt = 0;
@@ -249,9 +249,10 @@ export function migrateState() {
   // Migrate old plot format
   state.plots.forEach(p => {
     if (!p.crop) p.crop = 'wheat';
-    if (p.watered    === undefined) p.watered    = false;
-    if (p.fertilized === undefined) p.fertilized = false;
-    if (p.wateredAt  === undefined) p.wateredAt  = null;
+    if (p.watered         === undefined) p.watered         = false;
+    if (p.fertilized      === undefined) p.fertilized      = false;
+    if (p.wateredAt       === undefined) p.wateredAt       = null;
+    if (p.yieldRemaining  === undefined) p.yieldRemaining  = null;
   });
   // Migrate merchant state
   if (!state.merchant) state.merchant = { active: null, arrivedAt: 0, nextVisitAt: 0, nextMerchant: null, effect: null, motoOutcome: null, activeItemId: null, activeRiddleId: null };

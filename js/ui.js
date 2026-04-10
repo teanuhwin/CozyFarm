@@ -39,24 +39,15 @@ export function el(id) { return document.getElementById(id); }
 let toastTimer;
 export function toast(msg) {
   const t = el('toast');
+  const badge = el('grid-size-badge');
   t.textContent = msg;
-
-  // Dynamically position the toast to replace the 6x6 pill visual space if on the Farm Tab
-  // Use querySelector because grid-meta-center is a class, not an ID.
-  const center = document.querySelector('.grid-meta-center');
-  const farmTab = el('tab-farm');
-
-  if (center && farmTab && farmTab.classList.contains('active')) {
-    const rect = center.getBoundingClientRect();
-    t.style.top = Math.max(10, rect.top - 4) + 'px';
-  } else {
-    // Fallback position for shop, town, log, settings tabs
-    t.style.top = '100px';
-  }
-
   t.classList.add('show');
+  if (badge) badge.style.visibility = 'hidden';
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+  toastTimer = setTimeout(() => {
+    t.classList.remove('show');
+    if (badge) badge.style.visibility = '';
+  }, 2500);
 }
 
 // ── THEME ─────────────────────────────────────────────────
@@ -273,7 +264,8 @@ export function updateHint() {
 // ── BEG ZONE ──────────────────────────────────────────────
 export function updateBegZone() {
   const totalSeeds = (state.wheatSeeds||0)+(state.cornSeeds||0)+(state.pumpkinSeeds||0)+(state.truffleSeeds||0);
-  const broke = totalSeeds === 0 && state.coins < 5 && totalBarnContents() === 0;
+  // Broke = no seeds, no sellable crops, AND can't afford the cheapest seed (wheat = 5🪙)
+  const broke = totalSeeds === 0 && totalBarnContents() === 0 && state.coins < CROPS.wheat.seedCost;
   const zone  = el('beg-zone');
   if (!zone) return;
   zone.style.display = broke ? 'block' : 'none';
@@ -380,7 +372,7 @@ export function updateShopUI() {
   _elf('wheat-sell-desc')  && (_elf('wheat-sell-desc').textContent   = `${wPrice}🪙 each`);
   _elf('corn-sell-desc')   && (_elf('corn-sell-desc').textContent    = `${cPrice}🪙 each`);
   _elf('pumpkin-sell-desc')&& (_elf('pumpkin-sell-desc').textContent = `${pkPrice}🪙 each`);
-  _elf('truffle-sell-desc')&& (_elf('truffle-sell-desc').textContent = trPrice===500 ? '500🪙 flat (Royal Purveyor!)' : `${trPrice}🪙 each`);
+  _elf('truffle-sell-desc')&& (_elf('truffle-sell-desc').textContent = npcLevel('ellie')>=5 ? `${trPrice}🪙 (Royal Purveyor 2.2×!)` : `${trPrice}🪙 each`);
   _elf('wheat-sell-price') && (_elf('wheat-sell-price').textContent   = `🪙${wPrice}`);
   _elf('corn-sell-price')  && (_elf('corn-sell-price').textContent    = `🪙${cPrice}`);
   _elf('pumpkin-sell-price')&&(_elf('pumpkin-sell-price').textContent = `🪙${pkPrice}`);

@@ -64,7 +64,7 @@ export const NPC_DATA = {
       "I've decided the town square is far too peasant-like. I bought the fountain. You're welcome, everyone.",
       "The Queen herself is visiting. Your truffles were the star of the private tasting. She asked for your name.",
       "A rival socialite tried to outshine me. Your fine goods won the social war. I don't forget favors.",
-      "You are now the Royal Purveyor of Luxury. I've arranged it so your truffles never sell for less than 500 coins.",
+      "You are now the Royal Purveyor of Luxury. I've arranged it so your truffles sell for 2.2× their normal price. Forever.",
     ],
     bonuses: [
       'Truffle sell price +10%',
@@ -88,14 +88,14 @@ export const NPC_DATA = {
       "We accidentally rented a hot air balloon. The pilot wants a lot to land. It's… complicated.",
       "The Volcano Popcorn experiment technically failed, but the resulting Chaos Corn grows way faster now. Worth it.",
       "The Mystery Slime prank required wheat and a lot of coins. Kimchi was NOT happy. We regret nothing.",
-      "We hereby declare you an honorary Chaos Child! Your corn grows in half the time now. Water is for people who follow rules.",
+      "We hereby declare you an honorary Chaos Child! Your corn grows in half the time now. And sometimes it just shows up already watered. Don't ask us how.",
     ],
     bonuses: [
       'Corn sell price +15%',
       'Permanent +1 Corn yield',
       'Corn sell price +30%',
       '10% chance for Corn to grow instantly',
-      '✨ ULTIMATE: Corn growth time halved + never consumes water!',
+      '✨ ULTIMATE: Corn growth time halved + 60% chance pre-watered when planted!',
     ],
     requests: [
       { type: 'crop', cropKey: 'corn', text: "We're building a fortress made of kernels! We need {qty} 🌽 Corn right now!" },
@@ -112,14 +112,14 @@ export const NPC_DATA = {
       "Hiss. (Crow: He's claimed an abandoned cabin as his No Dogs Allowed sanctuary. You funded the deed.)",
       "Mrow. (Crow: Maru is preparing for the Great Freeze. Your provisions are keeping him fed through the long prowl.)",
       "Mrrrow! (Crow: During a storm, he taught you how pumpkins grow faster in bad weather. I did most of the explaining, honestly.)",
-      "PRRR. (Crow: He performed the legendary Shadow Pounce. Harvesting one pumpkin now scares the neighbors into dropping extras. I was not consulted on this.)",
+      "PRRR. (Crow: He performed the legendary Shadow Pounce. Harvesting one pumpkin now boosts all others growing nearby.)",
     ],
     bonuses: [
       'Pumpkin sell price +15%',
       '10% chance to find a Truffle when harvesting Pumpkin',
       'Pumpkin sell price +40%',
       'Pumpkins grow 30% faster during bad weather',
-      '✨ ULTIMATE: Shadow Pounce! Harvesting a Pumpkin scares up to 8 neighbors into dropping +1 Pumpkin each!',
+      '✨ ULTIMATE: Harvesting a Pumpkin gives +1 yield to all other growing Pumpkins!',
     ],
     requests: [
       { type: 'crop', cropKey: 'truffle', text: "Meow! (Crow: The fuzz-ball says he's stockpiling for the Great Freeze. {qty} 🍄 Truffles should keep his belly full.)" },
@@ -167,7 +167,7 @@ export const NPC_DATA = {
       'Big Fertilizer cost reduced to 190 🪙',
       'Fertilizer yield increased to +5',
       '20% chance for Big Fertilizer to be free',
-      '✨ ULTIMATE: Big Fertilizer yield +5 + 25% chance Fertilizer triggers instant growth!',
+      '✨ ULTIMATE: Big Fertilizer yield +8 + 25% chance Fertilizer triggers instant growth!',
     ],
     requests: [
       { type: 'crop', cropKey: 'pumpkin', text: 'The Moon is hungry. It has requested {qty} 🎃 Pumpkins. Do not ask why the Moon eats.' },

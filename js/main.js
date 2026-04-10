@@ -152,6 +152,11 @@ function clickPlot(idx) {
     plot.plantedAt  = Date.now();
     plot.watered    = false;
     plot.fertilized = false;
+    // Twins L5: 60% chance corn is pre-watered when planted
+    if (selectedCrop === 'corn' && affinityLevelFor('twins') >= 5 && Math.random() < 0.60) {
+      plot.watered  = true;
+      plot.wateredAt = Date.now();
+    }
     // Twins L4: 10% chance corn grows instantly — roll once at plant time
     if (selectedCrop === 'corn' && rollCornInstant()) {
       plot.state = 'ready';
@@ -183,10 +188,21 @@ function showPlotOptions(idx) {
   });
   const waterSpeedup = getWaterSpeedup() ?? WATER_SPEEDUP;
   const effectiveElapsed = computeEffectiveElapsed(plot, waterSpeedup);
-
+  
+  /* OLD CODE
   const remainingEffectiveMs = Math.max(0, growMs - effectiveElapsed);
-
-  // FIXED: Explicitly use the speedup fraction for watered plots to convert
+  // Convert back to real wall-clock seconds: if watered, effective time runs faster
+  // so real ms remaining = effective ms remaining * speedup fraction
+  const remainingRealMs = plot.watered && plot.wateredAt
+    ? remainingEffectiveMs * waterSpeedup
+    : remainingEffectiveMs;
+  const remaining = Math.ceil(remainingRealMs / 1000);
+  */
+  
+//NEW CODE FIX
+  const remainingEffectiveMs = Math.max(0, growMs - effectiveElapsed);
+  
+  // FIXED: Explicitly use the speedup fraction for watered plots to convert 
   // effective "growth points" back into real wall-clock milliseconds.
   let remainingRealMs = remainingEffectiveMs;
   if (plot.watered) {
@@ -194,8 +210,9 @@ function showPlotOptions(idx) {
     const waterFactor = cinnaLvl >= 5 ? 0.30 : cinnaLvl >= 3 ? 0.40 : cinnaLvl >= 1 ? 0.55 : 0.65;
     remainingRealMs = remainingEffectiveMs * waterFactor;
   }
-
+  
   const remaining = Math.ceil(remainingRealMs / 1000);
+//END OF FIX
 
   const mods = [];
   if (plot.watered)    mods.push('💧 watered');
@@ -224,31 +241,41 @@ function harvestPlot(idx) {
   const crop    = CROPS[plot.crop || 'wheat'];
   const cropKey = plot.crop || 'wheat';
 
-  let yieldAmt = crop.yield;
+  // ── PARTIAL HARVEST CONTINUATION ─────────────────────────
+  // If yieldRemaining is already set, this is a follow-up tap after a partial harvest.
+  // Use the stored remainder instead of recomputing yield from scratch (which would
+  // cause the infinite-harvest bug — same bonuses applied again each tap).
+  let yieldAmt;
+  if (plot.yieldRemaining != null) {
+    yieldAmt = plot.yieldRemaining;
+  } else {
+    // ── FIRST HARVEST — compute full yield ────────────────
+    yieldAmt = crop.yield;
 
-  // Kola: enhanced fertilizer yield
-  if (plot.fertilized) {
-    const fertBonus = getFertYield();
-    yieldAmt += (fertBonus !== null ? fertBonus : FERT_YIELD);
-  }
-
-  // Moto miracle harvest: +5 yield (overrides fertilizer, applied last)
-  const miracleBonus = getMiracleYield();
-  if (miracleBonus > 0) yieldAmt += miracleBonus;
-
-  // Kalbi: wheat yield bonus
-  if (cropKey === 'wheat') {
-    const wheatBonus = getWheatYieldBonus();
-    if (wheatBonus && Math.random() < wheatBonus.chance) {
-      yieldAmt += wheatBonus.extra;
+    // Kola: enhanced fertilizer yield
+    if (plot.fertilized) {
+      const fertBonus = getFertYield();
+      yieldAmt += (fertBonus !== null ? fertBonus : FERT_YIELD);
     }
+
+    // Moto miracle harvest: +5 yield
+    const miracleBonus = getMiracleYield();
+    if (miracleBonus > 0) yieldAmt += miracleBonus;
+
+    // Kalbi: wheat yield bonus
+    if (cropKey === 'wheat') {
+      const wheatBonus = getWheatYieldBonus();
+      if (wheatBonus && Math.random() < wheatBonus.chance) {
+        yieldAmt += wheatBonus.extra;
+      }
+    }
+
+    // Twins: corn yield bonus
+    if (cropKey === 'corn') yieldAmt += getCornYieldBonus();
+
+    // Ellie: truffle min yield
+    if (cropKey === 'truffle') yieldAmt = Math.max(getTruffleMinYield(), yieldAmt);
   }
-
-  // Twins: corn yield bonus
-  if (cropKey === 'corn') yieldAmt += getCornYieldBonus();
-
-  // Ellie: truffle min yield
-  if (cropKey === 'truffle') yieldAmt = Math.max(getTruffleMinYield(), yieldAmt);
 
   const weightless = isBarnWeightless();
   const space = weightless ? Infinity : (barnCap() - totalBarnContents());
@@ -257,9 +284,9 @@ function harvestPlot(idx) {
   // Partial harvest: take only what fits, leave the plot as ready if there's more
   const partialHarvest = !weightless && yieldAmt > space;
   const actualHarvest = weightless ? yieldAmt : Math.min(yieldAmt, space);
-  yieldAmt = actualHarvest;
+  const takenAmt = actualHarvest;
 
-  state[cropKey] = (state[cropKey] || 0) + yieldAmt;
+  state[cropKey] = (state[cropKey] || 0) + takenAmt;
 
   // Maru L2: 10% chance to find a truffle when harvesting pumpkin
   if (cropKey === 'pumpkin' && affinityLevelFor('maru') >= 2 && Math.random() < 0.10) {
@@ -270,29 +297,15 @@ function harvestPlot(idx) {
     }
   }
 
-  // Maru L5: Shadow Pounce — harvesting a pumpkin scares the 8 neighbors in a 3×3
-  // grid, each yielding +1 pumpkin directly into the barn.
+  // Maru L5: +1 yield to all other currently-growing (planted) pumpkins
+  let maruBonus = 0;
   if (cropKey === 'pumpkin' && affinityLevelFor('maru') >= 5) {
-    const harvestRow = Math.floor(idx / state.cols);
-    const harvestCol = idx % state.cols;
-    let scared = 0;
-    for (let dr = -1; dr <= 1; dr++) {
-      for (let dc = -1; dc <= 1; dc++) {
-        if (dr === 0 && dc === 0) continue; // skip the harvested plot itself
-        const r2 = harvestRow + dr;
-        const c2 = harvestCol + dc;
-        if (r2 < 0 || r2 >= state.rows || c2 < 0 || c2 >= state.cols) continue;
-        const neighbor = state.plots[r2 * state.cols + c2];
-        if (neighbor && neighbor.crop === 'pumpkin' && neighbor.state !== 'empty') {
-          const space = barnCap() - totalBarnContents();
-          if (space > 0) {
-            state.pumpkin = (state.pumpkin || 0) + 1;
-            scared++;
-          }
-        }
+    state.plots.forEach((p, i) => {
+      if (i !== idx && p.state === 'planted' && p.crop === 'pumpkin') {
+        const s = barnCap() - totalBarnContents();
+        if (s > 0) { state.pumpkin = (state.pumpkin || 0) + 1; maruBonus++; }
       }
-    }
-    if (scared > 0) toast(`👻 Shadow Pounce! Scared ${scared} neighbor${scared !== 1 ? 's' : ''} into dropping a pumpkin!`);
+    });
   }
 
   // Kola L5: fertilizer triggers instant growth (handled at fertilize time, but also
@@ -321,27 +334,33 @@ function harvestPlot(idx) {
   }
 
   if (!partialHarvest) {
-    plot.state      = 'empty';
-    plot.crop       = null;
-    plot.plantedAt  = null;
-    plot.watered    = false;
-    plot.fertilized = false;
-    plot.wateredAt  = null;
+    plot.state         = 'empty';
+    plot.crop          = null;
+    plot.plantedAt     = null;
+    plot.watered       = false;
+    plot.fertilized    = false;
+    plot.wateredAt     = null;
+    plot.yieldRemaining = null;
     notifiedPlots.delete(idx);
+  } else {
+    // Store how much is still left so next tap picks up where we left off
+    plot.yieldRemaining = yieldAmt - takenAmt;
   }
   // Partial: plot stays 'ready' so player can harvest the rest after making barn space
 
-  state.stats.totalHarvests   = (state.stats.totalHarvests  || 0) + 1;
-  if (cropKey === 'wheat')   state.stats.wheatHarvests  = (state.stats.wheatHarvests  || 0) + 1;
-  if (cropKey === 'truffle') state.stats.truffleHarvests = (state.stats.truffleHarvests || 0) + 1;
+  state.stats.totalHarvests   = (state.stats.totalHarvests  || 0) + takenAmt;
+  if (cropKey === 'wheat')   state.stats.wheatHarvests  = (state.stats.wheatHarvests  || 0) + takenAmt;
+  if (cropKey === 'truffle') state.stats.truffleHarvests = (state.stats.truffleHarvests || 0) + takenAmt;
 
   saveState();
   renderPlot(idx);
   updateHeader();
   updateShopUI();
   updateFarmToolbar(selectedCrop, selectedTool);
-  const partialMsg = partialHarvest ? ` (${space} fit — sell to grab the rest!)` : '';
-  toast(`${crop.emoji} Harvested ${yieldAmt} ${crop.name}!${seedReturned ? ' 🌱 Seed returned!' : ''}${partialMsg}`);
+  const remaining  = partialHarvest ? yieldAmt - takenAmt : 0;
+  const partialMsg = partialHarvest ? ` (${remaining} still left — sell to grab the rest!)` : '';
+  const maruMsg    = maruBonus > 0 ? ` 🐱 +${maruBonus} to other pumpkins!` : '';
+  toast(`${crop.emoji} Harvested ${takenAmt} ${crop.name}!${seedReturned ? ' 🌱 Seed returned!' : ''}${maruMsg}${partialMsg}`);
   updateHint();
   updateBegZone();
   checkAchievements();
@@ -626,7 +645,7 @@ function doThunderZap() {
       [occupied[i], occupied[j]] = [occupied[j], occupied[i]];
     }
     occupied.slice(0, zapCount).forEach(({ p, i }) => {
-      p.state = 'empty'; p.crop = null; p.plantedAt = null; p.watered = false; p.fertilized = false;
+      p.state = 'empty'; p.crop = null; p.plantedAt = null; p.watered = false; p.fertilized = false; p.yieldRemaining = null;
       notifiedPlots.delete(i);
     });
     state.stats.cropsLostToWeather = (state.stats.cropsLostToWeather || 0) + zapCount;
@@ -657,11 +676,11 @@ function doFloodStart() {
     const idx = row * state.cols + c;
     const p = state.plots[idx];
     if (p && p.state !== 'empty' && !(wheatImmune && p.crop === 'wheat')) {
-      state.plots[idx] = { state: 'flooded', crop: null, plantedAt: null, watered: false, fertilized: false, wateredAt: null };
+      state.plots[idx] = { state: 'flooded', crop: null, plantedAt: null, watered: false, fertilized: false, wateredAt: null, yieldRemaining: null };
       notifiedPlots.delete(idx);
       lost++;
     } else if (p && p.state === 'empty') {
-      state.plots[idx] = { state: 'flooded', crop: null, plantedAt: null, watered: false, fertilized: false, wateredAt: null };
+      state.plots[idx] = { state: 'flooded', crop: null, plantedAt: null, watered: false, fertilized: false, wateredAt: null, yieldRemaining: null };
     }
   }
   state.stats.cropsLostToWeather = (state.stats.cropsLostToWeather || 0) + lost;
@@ -676,7 +695,7 @@ function doFloodStart() {
 function doFloodEnd() {
   state.plots.forEach((p, i) => {
     if (p.state === 'flooded') {
-      state.plots[i] = { state: 'empty', crop: null, plantedAt: null, watered: false, fertilized: false, wateredAt: null };
+      state.plots[i] = { state: 'empty', crop: null, plantedAt: null, watered: false, fertilized: false, wateredAt: null, yieldRemaining: null };
     }
   });
   state.weather.floodedRow = -1;
