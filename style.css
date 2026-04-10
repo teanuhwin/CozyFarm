@@ -460,15 +460,17 @@ main {
 /* ── TOAST ── */
 #toast {
   position: fixed;
+  /* Sits over the grid-size-badge in the grid-meta-row, visually replacing it */
+  top: 172px;
   left: 50%;
-  transform: translateX(-50%) translateY(-8px);
+  transform: translateX(-50%) translateY(-6px);
   width: max-content;
   max-width: calc(100vw - 32px);
   background: var(--card2);
-  border: 1.5px solid var(--border);
+  border: 1.5px solid var(--accent);
   border-radius: 14px;
-  padding: 7px 16px;
-  font-size: 13px;
+  padding: 4px 14px;
+  font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
