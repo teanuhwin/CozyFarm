@@ -497,7 +497,7 @@ export function getBigFertCost(base) {
 }
 
 export function getBigFertYield() {
-  return affinityLevel('kola') >= 5 ? 8 : null;
+  return affinityLevel('kola') >= 5 ? 8 : 5;
 }
 
 export function getFertInstantChance() {

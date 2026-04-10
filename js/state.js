@@ -69,6 +69,7 @@ export const WATER_SPEEDUP   = 0.65;
 export const FERT_COST       = 8;
 export const BIG_FERT_COST   = 280;
 export const FERT_YIELD      = 2;
+export const BIG_FERT_YIELD  = 5;
 export const GLOVES_COST     = 80;
 export const GLOVES_USES     = 20;
 export const GLOVES_CHANCE   = 0.60;

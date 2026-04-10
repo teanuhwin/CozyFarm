@@ -297,11 +297,17 @@ function harvestPlot(idx) {
     }
   }
 
-  // Maru L5: +1 yield to all other currently-growing (planted) pumpkins
+  // Maru L5: +1 yield to all other currently-growing (planted) pumpkins adjacent to this plot
   let maruBonus = 0;
   if (cropKey === 'pumpkin' && affinityLevelFor('maru') >= 5) {
+    const harvestRow = Math.floor(idx / state.cols);
+    const harvestCol = idx % state.cols;
     state.plots.forEach((p, i) => {
-      if (i !== idx && p.state === 'planted' && p.crop === 'pumpkin') {
+      if (i === idx) return;
+      const pRow = Math.floor(i / state.cols);
+      const pCol = i % state.cols;
+      const isAdjacent = Math.abs(pRow - harvestRow) <= 1 && Math.abs(pCol - harvestCol) <= 1;
+      if (isAdjacent && p.state === 'planted' && p.crop === 'pumpkin') {
         const s = barnCap() - totalBarnContents();
         if (s > 0) { state.pumpkin = (state.pumpkin || 0) + 1; maruBonus++; }
       }
@@ -504,7 +510,7 @@ function buyBigFertilizer() {
     targets.forEach(p => { if (Math.random() < instantChance) p.state = 'ready'; });
   }
   const bigYield = getBigFertYield();
-  const yieldMsg = bigYield !== null ? ` (+${bigYield} yield!)` : '';
+  const yieldMsg = ` (+${bigYield} yield!)`;
   saveState(); renderGrid(); updateHeader(); updateShopUI();
   toast(`🌿 Fertilized all ${targets.length} plot${targets.length > 1 ? 's' : ''}!${yieldMsg}${cost === 0 ? ' (free!)' : ''}`);
 }
