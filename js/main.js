@@ -302,12 +302,18 @@ function harvestPlot(idx) {
     }
   }
 
-  // Maru L5: +1 bonus yield stored on each neighboring planted pumpkin,
+  // Maru L5: +1 bonus yield stored on each adjacent (8-directional) planted pumpkin,
   // consumed when that plot is harvested (not dumped to barn immediately)
   let maruBonus = 0;
   if (cropKey === 'pumpkin' && affinityLevelFor('maru') >= 5) {
+    const harvestRow = Math.floor(idx / state.cols);
+    const harvestCol = idx % state.cols;
     state.plots.forEach((p, i) => {
-      if (i !== idx && p.state === 'planted' && p.crop === 'pumpkin') {
+      if (i === idx) return;
+      const pRow = Math.floor(i / state.cols);
+      const pCol = i % state.cols;
+      const isAdjacent = Math.abs(pRow - harvestRow) <= 1 && Math.abs(pCol - harvestCol) <= 1;
+      if (isAdjacent && p.state === 'planted' && p.crop === 'pumpkin') {
         p.bonusYield = (p.bonusYield || 0) + 1;
         maruBonus++;
       }

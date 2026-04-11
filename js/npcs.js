@@ -119,7 +119,7 @@ export const NPC_DATA = {
       '10% chance to find a Truffle when harvesting Pumpkin',
       'Pumpkin sell price +40%',
       'Pumpkins grow 30% faster during bad weather',
-      '✨ ULTIMATE: Harvesting a Pumpkin queues +1 yield on all other growing Pumpkins!',
+      '✨ ULTIMATE: Harvesting a Pumpkin queues +1 yield on all adjacent growing Pumpkins!',
     ],
     requests: [
       { type: 'crop', cropKey: 'truffle', text: "Meow! (Crow: The fuzz-ball says he's stockpiling for the Great Freeze. {qty} 🍄 Truffles should keep his belly full.)" },
