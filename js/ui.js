@@ -27,7 +27,7 @@ function waterSpeedupPct()  { const l=npcLevel('cinna');   return l>=5?70:l>=3?6
 function hoseCost()         { const l=npcLevel('cinna');   return l>=2?140:200; }
 function fertYieldAmt()     { const l=npcLevel('kola');    return l>=3?5:l>=1?3:2; }
 function bigFertCost()      { const l=npcLevel('kola');    return l>=2?190:280; }
-function bigFertYieldAmt()  { return npcLevel('kola')>=5?8:5; }
+function bigFertYieldAmt()  { const l=npcLevel('kola'); return l>=3?5:l>=1?3:2; }
 function glovesMaxUses()    { const l=npcLevel('kimchi');  return l>=5?Infinity:l>=4?60:l>=3?50:l>=2?40:l>=1?30:20; }
 function glovesChancePct()  { return npcLevel('kimchi')>=5?80:60; }
 

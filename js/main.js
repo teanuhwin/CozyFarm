@@ -275,6 +275,11 @@ function harvestPlot(idx) {
 
     // Ellie: truffle min yield
     if (cropKey === 'truffle') yieldAmt = Math.max(getTruffleMinYield(), yieldAmt);
+
+    // Maru L5: consume any bonus yield accumulated from neighboring pumpkin harvests
+    if (cropKey === 'pumpkin' && (plot.bonusYield || 0) > 0) {
+      yieldAmt += plot.bonusYield;
+    }
   }
 
   const weightless = isBarnWeightless();
@@ -297,19 +302,14 @@ function harvestPlot(idx) {
     }
   }
 
-  // Maru L5: +1 yield to all other currently-growing (planted) pumpkins adjacent to this plot
+  // Maru L5: +1 bonus yield stored on each neighboring planted pumpkin,
+  // consumed when that plot is harvested (not dumped to barn immediately)
   let maruBonus = 0;
   if (cropKey === 'pumpkin' && affinityLevelFor('maru') >= 5) {
-    const harvestRow = Math.floor(idx / state.cols);
-    const harvestCol = idx % state.cols;
     state.plots.forEach((p, i) => {
-      if (i === idx) return;
-      const pRow = Math.floor(i / state.cols);
-      const pCol = i % state.cols;
-      const isAdjacent = Math.abs(pRow - harvestRow) <= 1 && Math.abs(pCol - harvestCol) <= 1;
-      if (isAdjacent && p.state === 'planted' && p.crop === 'pumpkin') {
-        const s = barnCap() - totalBarnContents();
-        if (s > 0) { state.pumpkin = (state.pumpkin || 0) + 1; maruBonus++; }
+      if (i !== idx && p.state === 'planted' && p.crop === 'pumpkin') {
+        p.bonusYield = (p.bonusYield || 0) + 1;
+        maruBonus++;
       }
     });
   }
@@ -340,13 +340,14 @@ function harvestPlot(idx) {
   }
 
   if (!partialHarvest) {
-    plot.state         = 'empty';
-    plot.crop          = null;
-    plot.plantedAt     = null;
-    plot.watered       = false;
-    plot.fertilized    = false;
-    plot.wateredAt     = null;
+    plot.state          = 'empty';
+    plot.crop           = null;
+    plot.plantedAt      = null;
+    plot.watered        = false;
+    plot.fertilized     = false;
+    plot.wateredAt      = null;
     plot.yieldRemaining = null;
+    plot.bonusYield     = 0;
     notifiedPlots.delete(idx);
   } else {
     // Store how much is still left so next tap picks up where we left off
@@ -365,7 +366,7 @@ function harvestPlot(idx) {
   updateFarmToolbar(selectedCrop, selectedTool);
   const remaining  = partialHarvest ? yieldAmt - takenAmt : 0;
   const partialMsg = partialHarvest ? ` (${remaining} still left — sell to grab the rest!)` : '';
-  const maruMsg    = maruBonus > 0 ? ` 🐱 +${maruBonus} to other pumpkins!` : '';
+  const maruMsg    = maruBonus > 0 ? ` 🐱 +1 queued on ${maruBonus} other pumpkin${maruBonus !== 1 ? 's' : ''}!` : '';
   toast(`${crop.emoji} Harvested ${takenAmt} ${crop.name}!${seedReturned ? ' 🌱 Seed returned!' : ''}${maruMsg}${partialMsg}`);
   updateHint();
   updateBegZone();
@@ -510,7 +511,7 @@ function buyBigFertilizer() {
     targets.forEach(p => { if (Math.random() < instantChance) p.state = 'ready'; });
   }
   const bigYield = getBigFertYield();
-  const yieldMsg = ` (+${bigYield} yield!)`;
+  const yieldMsg = ` (+${bigYield} yield each!)`;
   saveState(); renderGrid(); updateHeader(); updateShopUI();
   toast(`🌿 Fertilized all ${targets.length} plot${targets.length > 1 ? 's' : ''}!${yieldMsg}${cost === 0 ? ' (free!)' : ''}`);
 }
@@ -651,7 +652,7 @@ function doThunderZap() {
       [occupied[i], occupied[j]] = [occupied[j], occupied[i]];
     }
     occupied.slice(0, zapCount).forEach(({ p, i }) => {
-      p.state = 'empty'; p.crop = null; p.plantedAt = null; p.watered = false; p.fertilized = false; p.yieldRemaining = null;
+      p.state = 'empty'; p.crop = null; p.plantedAt = null; p.watered = false; p.fertilized = false; p.yieldRemaining = null; p.bonusYield = 0;
       notifiedPlots.delete(i);
     });
     state.stats.cropsLostToWeather = (state.stats.cropsLostToWeather || 0) + zapCount;
@@ -682,11 +683,11 @@ function doFloodStart() {
     const idx = row * state.cols + c;
     const p = state.plots[idx];
     if (p && p.state !== 'empty' && !(wheatImmune && p.crop === 'wheat')) {
-      state.plots[idx] = { state: 'flooded', crop: null, plantedAt: null, watered: false, fertilized: false, wateredAt: null, yieldRemaining: null };
+      state.plots[idx] = { state: 'flooded', crop: null, plantedAt: null, watered: false, fertilized: false, wateredAt: null, yieldRemaining: null, bonusYield: 0 };
       notifiedPlots.delete(idx);
       lost++;
     } else if (p && p.state === 'empty') {
-      state.plots[idx] = { state: 'flooded', crop: null, plantedAt: null, watered: false, fertilized: false, wateredAt: null, yieldRemaining: null };
+      state.plots[idx] = { state: 'flooded', crop: null, plantedAt: null, watered: false, fertilized: false, wateredAt: null, yieldRemaining: null, bonusYield: 0 };
     }
   }
   state.stats.cropsLostToWeather = (state.stats.cropsLostToWeather || 0) + lost;
@@ -701,7 +702,7 @@ function doFloodStart() {
 function doFloodEnd() {
   state.plots.forEach((p, i) => {
     if (p.state === 'flooded') {
-      state.plots[i] = { state: 'empty', crop: null, plantedAt: null, watered: false, fertilized: false, wateredAt: null, yieldRemaining: null };
+      state.plots[i] = { state: 'empty', crop: null, plantedAt: null, watered: false, fertilized: false, wateredAt: null, yieldRemaining: null, bonusYield: 0 };
     }
   });
   state.weather.floodedRow = -1;

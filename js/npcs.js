@@ -119,7 +119,7 @@ export const NPC_DATA = {
       '10% chance to find a Truffle when harvesting Pumpkin',
       'Pumpkin sell price +40%',
       'Pumpkins grow 30% faster during bad weather',
-      '✨ ULTIMATE: Harvesting a Pumpkin gives +1 yield to all other growing Pumpkins!',
+      '✨ ULTIMATE: Harvesting a Pumpkin queues +1 yield on all other growing Pumpkins!',
     ],
     requests: [
       { type: 'crop', cropKey: 'truffle', text: "Meow! (Crow: The fuzz-ball says he's stockpiling for the Great Freeze. {qty} 🍄 Truffles should keep his belly full.)" },
@@ -167,7 +167,7 @@ export const NPC_DATA = {
       'Big Fertilizer cost reduced to 190 🪙',
       'Fertilizer yield increased to +5',
       '20% chance for Big Fertilizer to be free',
-      '✨ ULTIMATE: Big Fertilizer yield +8 + 25% chance Fertilizer triggers instant growth!',
+      '✨ ULTIMATE: Both fertilizers give +5 yield + 25% chance Fertilizer triggers instant growth!',
     ],
     requests: [
       { type: 'crop', cropKey: 'pumpkin', text: 'The Moon is hungry. It has requested {qty} 🎃 Pumpkins. Do not ask why the Moon eats.' },
@@ -497,7 +497,12 @@ export function getBigFertCost(base) {
 }
 
 export function getBigFertYield() {
-  return affinityLevel('kola') >= 5 ? 8 : 5;
+  // Big Fert gives same +5 as single fert at max Kola.
+  // The L5 upgrade is the 25% instant-growth proc, not extra yield.
+  const lvl = affinityLevel('kola');
+  if (lvl >= 3) return 5;
+  if (lvl >= 1) return 3;
+  return 2; // base, matches FERT_YIELD fallback
 }
 
 export function getFertInstantChance() {

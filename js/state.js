@@ -69,7 +69,6 @@ export const WATER_SPEEDUP   = 0.65;
 export const FERT_COST       = 8;
 export const BIG_FERT_COST   = 280;
 export const FERT_YIELD      = 2;
-export const BIG_FERT_YIELD  = 5;
 export const GLOVES_COST     = 80;
 export const GLOVES_USES     = 20;
 export const GLOVES_CHANCE   = 0.60;
@@ -186,7 +185,7 @@ export function expandCost(type) {
 export function initPlots() {
   const needed = state.rows * state.cols;
   while (state.plots.length < needed) {
-    state.plots.push({ state: 'empty', crop: null, plantedAt: null, watered: false, fertilized: false, wateredAt: null, yieldRemaining: null });
+    state.plots.push({ state: 'empty', crop: null, plantedAt: null, watered: false, fertilized: false, wateredAt: null, yieldRemaining: null, bonusYield: 0 });
   }
   state.plots = state.plots.slice(0, needed);
 }
@@ -254,6 +253,7 @@ export function migrateState() {
     if (p.fertilized      === undefined) p.fertilized      = false;
     if (p.wateredAt       === undefined) p.wateredAt       = null;
     if (p.yieldRemaining  === undefined) p.yieldRemaining  = null;
+    if (p.bonusYield      === undefined) p.bonusYield      = 0;
   });
   // Migrate merchant state
   if (!state.merchant) state.merchant = { active: null, arrivedAt: 0, nextVisitAt: 0, nextMerchant: null, effect: null, motoOutcome: null, activeItemId: null, activeRiddleId: null };
