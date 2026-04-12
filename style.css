@@ -450,7 +450,7 @@ main {
   left: 50%;
   transform: translateX(-50%) translateY(-6px);
   width: auto; /* Change this to: width: auto; */
-  max-width: calc(100vw - 16px);
+  max-width: calc(100vw - 4px);
   background: var(--card2);
   border: 1.5px solid var(--accent);
   border-radius: 14px;
