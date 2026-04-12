@@ -69,18 +69,7 @@ This project has been refactored into a **modular ES6 structure** for efficiency
 * `js/ui.js`: Dynamic DOM rendering and plot updates.
 * `js/bodie.js`: Helper Bodie logic. 
 
-### **Running the Game Locally**
-Because the game uses ES Modules, you cannot run it by simply double-clicking `index.html`. You must use a local server:
-1.  **VS Code:** Install the **Live Server** extension and click "Go Live".
-2.  **Python:** Run `python -m http.server 8000` in your project folder.
-
-### **UI Updates (V2.2)**
-* **Mobile Scaling:** Uses `clamp()` and `.cols-6` logic to prevent text overflow on 6x6 grids.
-* **Clean UI:** Hide expansion helper text and display "Max farm size reached" banners at the 6x6 limit.
-* **Persistence:** All farm progress and NPC affinity survive browser refreshes via `localStorage`.
-
 ---
 
 ## 🚀 Roadmap
-* 🍳 **Kitchen System:** Process harvested crops into cooked dishes for NPCs.
 * 🏆 Additional achievements and milestones.
