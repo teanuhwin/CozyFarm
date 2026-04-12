@@ -23,22 +23,22 @@ export const BODIE_TIPS = [
   {
     id: 'weather_thunder',
     check: s => s.weather?.current === 'thunder',
-    text: 'Uh oh, thunder! Lightning can zap your crops. Harvest what you can fast!',
+    text: 'Hi! Im Bodie. Uh oh, thunder! Lightning can zap your crops. Harvest what you can fast!',
   },
   {
     id: 'weather_flood',
     check: s => s.weather?.current === 'flood',
-    text: 'FLOOD! One row is underwater until the weather changes. Nothing you can do but wait it out.',
+    text: 'Hi! Im Bodie. FLOOD! One row is underwater until the weather changes. Nothing you can do but wait it out.',
   },
   {
     id: 'weather_sunny',
     check: s => s.weather?.current === 'sunny',
-    text: 'Beautiful day! ☀️ Crops growing faster in sun!',
+    text: 'Hi! Im Bodie. Beautiful day! ☀️ Crops growing faster in sun!',
   },
   {
     id: 'weather_overcast',
     check: s => s.weather?.current === 'overcast',
-    text: "Uh oh. Crops seem to be slowing down. Don't worry, the clouds will pass soon. Probably…",
+    text: "Hi! Im Bodie. Uh oh. Crops seem to be slowing down. Don't worry, the clouds will pass soon. Probably…",
   },
 
   // ── Beg zone visible ─────────────────────────────────────
@@ -49,7 +49,7 @@ export const BODIE_TIPS = [
       const barnTotal  = (s.wheat||0)+(s.corn||0)+(s.pumpkin||0)+(s.truffle||0);
       return totalSeeds === 0 && barnTotal === 0 && s.coins < CROPS.wheat.seedCost;
     },
-    text: 'Oh no. Are you... begging for seeds? Embarassing~',
+    text: 'Hi! Im Bodie. Oh no. Are you... begging for seeds? Embarassing~',
   },
 
   // ── Late game milestones ──────────────────────────────────
@@ -59,65 +59,65 @@ export const BODIE_TIPS = [
       if (!s.npcs) return false;
       return Object.values(s.npcs).some(n => (n.affinity || 0) >= 15);
     },
-    text: "MAX AFFINITY! You're basically a local legend now. I don't think you need me anymore…",
+    text: "Hi! Im Bodie. MAX AFFINITY! You're basically a local legend now. I don't think you need me anymore…",
   },
   {
     id: 'town_unlocked',
     check: s => s.rows >= 6 && s.cols >= 6 && s.barnLevel >= 3,
-    text: "THE TOWN IS OPEN! Go meet your neighbors. They're a little strange.",
+    text: "Hi! Im Bodie. THE TOWN IS OPEN! Go meet your neighbors. They're a little strange.",
   },
 
   // ── Crop unlocks (use unlockCoins from CROPS constant) ───
   {
     id: 'truffle_unlocked',
     check: s => (s.lifetimeCoins || 0) >= CROPS.truffle.unlockCoins,
-    text: "Truffles?! You're basically a professional now. I'm so proud.",
+    text: "Hi! Im Bodie. Truffles?! You're basically a professional now. I'm so proud.",
   },
   {
     id: 'gloves_unlocked',
     check: s => (s.stats?.wheatHarvests || 0) >= 20,
-    text: 'Cool Gloves! They give you a chance to recover seeds on harvest. Find them in the Shop.',
+    text: 'Hi! Im Bodie. Cool Gloves! They give you a chance to recover seeds on harvest. Find them in the Shop.',
   },
   {
     id: 'pumpkin_unlocked',
     check: s => (s.lifetimeCoins || 0) >= CROPS.pumpkin.unlockCoins,
-    text: 'Pumpkins! These take a while but they\'re worth it. Patience is a virtue.',
+    text: 'Hi! Im Bodie. Pumpkins! These take a while but they\'re worth it. Patience is a virtue.',
   },
   {
     id: 'corn_unlocked',
     check: s => (s.lifetimeCoins || 0) >= CROPS.corn.unlockCoins,
-    text: 'Ooh, Corn! Longer grow time, but way more coin per harvest. Check the Shop.',
+    text: 'Hi! Im Bodie. Ooh, Corn! Longer grow time, but way more coin per harvest. Check the Shop.',
   },
 
   // ── Barn & farm growth ────────────────────────────────────
   {
     id: 'barn_upgraded',
     check: s => (s.barnLevel || 0) >= 1,
-    text: 'Much better! More room means more crops means more coins. The math checks out.',
+    text: 'Hi! Im Bodie. Much better! More room means more crops means more coins. The math checks out.',
   },
   {
     id: 'hint_expand',
     check: s => s.coins >= 50 && s.rows <= 2 && s.cols <= 2,
-    text: "Your farm feels a little small, don't you think? You can add rows and columns in the Shop.",
+    text: "Hi! Im Bodie. Your farm feels a little small, don't you think? You can add rows and columns in the Shop.",
   },
   {
     id: 'hint_barn',
     check: s => s.coins >= 30 && (s.barnLevel || 0) === 0,
-    text: `Psst~ Your barn only holds ${BARN_BASE_CAP} crops. Sell some and think about upgrading it soon.`,
+    text: `Hi! Im Bodie. Psst~ Your barn only holds ${BARN_BASE_CAP} crops. Sell some and think about upgrading it soon.`,
   },
 
   // ── First harvest ─────────────────────────────────────────
   {
     id: 'first_harvest',
     check: s => (s.stats?.totalHarvests || 0) >= 1,
-    text: 'Nice work! Head to the Shop tab to sell your crops for coins.',
+    text: 'Hi! Im Bodie. Nice work! Head to the Shop tab to sell your crops for coins.',
   },
 
   // ── Absolute start (fallback) ─────────────────────────────
   {
     id: 'start',
     check: () => true,
-    text: "Welcome to Cozy Farm! You've got wheat seeds. Tap an empty plot to plant one.",
+    text: "Hi! Im Bodie. Welcome to Cozy Farm! You've got wheat seeds. Tap an empty plot to plant one.",
   },
 ];
 
