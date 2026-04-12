@@ -449,8 +449,8 @@ main {
   top: 88px;
   left: 50%;
   transform: translateX(-50%) translateY(-6px);
-  width: 90%; /* Change this to: width: auto; */
-  max-width: 100%;
+  width: auto; /* Change this to: width: auto; */
+  max-width: 90%;
   background: var(--card2);
   border: 1.5px solid var(--accent);
   border-radius: 14px;
