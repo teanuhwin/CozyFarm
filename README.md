@@ -67,6 +67,7 @@ This project has been refactored into a **modular ES6 structure** for efficiency
 * `js/state.js`: Global state management and `localStorage` persistence.
 * `js/npcs.js`: Town Square logic, NPC data, and request generation.
 * `js/ui.js`: Dynamic DOM rendering and plot updates.
+* `js/bodie.js`: Helper Bodie logic. 
 
 ### **Running the Game Locally**
 Because the game uses ES Modules, you cannot run it by simply double-clicking `index.html`. You must use a local server:
