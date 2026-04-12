@@ -5,6 +5,7 @@ import {
   WATER_COST, WATER_HOSE_COST, FERT_COST, BIG_FERT_COST,
   GLOVES_COST, GLOVES_USES,
   BARN_UPGRADES, MAX_ROWS, MAX_COLS,
+  WATER_UNLOCK_COINS, FERT_UNLOCK_COINS,
   barnCap, totalBarnContents, expandCost, currentWeatherMultiplier, formatTime,
   computeGrowMs, computeEffectiveElapsed,
 } from './state.js';
@@ -46,7 +47,29 @@ export function toast(msg) {
   toastTimer = setTimeout(() => {
     t.classList.remove('show');
     if (badge) badge.style.visibility = '';
-  }, 2500);
+  }, 3000);
+}
+
+// Wire up tap-to-dismiss on toast (done once at module load)
+function initToastDismiss() {
+  const t = el('toast');
+  if (!t) return;
+  t.style.pointerEvents = 'auto';
+  t.style.cursor = 'pointer';
+  t.addEventListener('click', () => {
+    clearTimeout(toastTimer);
+    t.classList.remove('show');
+    const badge = el('grid-size-badge');
+    if (badge) badge.style.visibility = '';
+  });
+}
+// Call after DOM is ready — we defer via requestAnimationFrame
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initToastDismiss);
+  } else {
+    initToastDismiss();
+  }
 }
 
 // ── THEME ─────────────────────────────────────────────────
@@ -66,11 +89,6 @@ export function switchTab(name, btn) {
 }
 
 // ── BODIE UI ──────────────────────────────────────────────
-/**
- * Refresh the Bodie button appearance.
- * Called from tick loop and after any state change that might shift the tip.
- * Importing bodie.js lazily here avoids a circular dependency chain.
- */
 export function updateBodieUI() {
   import('./bodie.js').then(({ isBodieUnread }) => {
     const btn = el('bodie-btn');
@@ -193,8 +211,9 @@ export function updateHeader() {
   el('seed-display').textContent = seeds;
   el('barn-display').textContent = `${totalBarnContents()}/${barnCap()}`;
 
-  const showWater = state.stats.everBoughtWater || (state.water || 0) > 0;
-  const showFert  = state.stats.everBoughtFert  || (state.fertilizer || 0) > 0;
+  const lifetime = state.lifetimeCoins || 0;
+  const showWater = lifetime >= WATER_UNLOCK_COINS || state.stats.everBoughtWater || (state.water || 0) > 0;
+  const showFert  = lifetime >= FERT_UNLOCK_COINS  || state.stats.everBoughtFert  || (state.fertilizer || 0) > 0;
   const gd        = state.glovesDurability || 0;
   const showRow2  = showWater || showFert || gd > 0;
 
@@ -209,27 +228,41 @@ export function updateHeader() {
 
 // ── FARM TOOLBAR ──────────────────────────────────────────
 export function updateFarmToolbar(selectedCrop, selectedTool) {
-  const cornUnlocked    = (state.lifetimeCoins || 0) >= CROPS.corn.unlockCoins;
-  const pumpkinUnlocked = (state.lifetimeCoins || 0) >= CROPS.pumpkin.unlockCoins;
-  const truffleUnlocked = (state.lifetimeCoins || 0) >= CROPS.truffle.unlockCoins;
-  const hasWater = (state.water || 0) > 0 || state.stats.everBoughtWater;
-  const hasFert  = (state.fertilizer || 0) > 0 || state.stats.everBoughtFert;
-  const showTools = hasWater || hasFert;
+  const lifetime        = state.lifetimeCoins || 0;
+  const cornUnlocked    = lifetime >= CROPS.corn.unlockCoins;
+  const pumpkinUnlocked = lifetime >= CROPS.pumpkin.unlockCoins;
+  const truffleUnlocked = lifetime >= CROPS.truffle.unlockCoins;
+  const showWater = lifetime >= WATER_UNLOCK_COINS || (state.water || 0) > 0 || state.stats.everBoughtWater;
+  const showFert  = lifetime >= FERT_UNLOCK_COINS  || (state.fertilizer || 0) > 0 || state.stats.everBoughtFert;
+  const showTools = showWater || showFert;
 
   const plantMode = selectedTool === 'plant';
-  el('crop-btn-wheat').classList.toggle('selected',   plantMode && selectedCrop === 'wheat');
-  el('crop-btn-corn').classList.toggle('selected',    plantMode && selectedCrop === 'corn');
-  el('crop-btn-pumpkin').classList.toggle('selected', plantMode && selectedCrop === 'pumpkin');
-  el('crop-btn-truffle').classList.toggle('selected', plantMode && selectedCrop === 'truffle');
 
-  el('crop-btn-corn').disabled    = !cornUnlocked;
-  el('crop-btn-pumpkin').disabled = !pumpkinUnlocked;
-  el('crop-btn-truffle').disabled = !truffleUnlocked;
+  // Wheat always visible
+  el('crop-btn-wheat').style.display = '';
+  el('crop-btn-wheat').classList.toggle('selected', plantMode && selectedCrop === 'wheat');
+  el('toolbar-wheat-seeds').textContent = `×${state.wheatSeeds || 0}`;
 
-  el('toolbar-wheat-seeds').textContent   = `×${state.wheatSeeds || 0}`;
-  el('toolbar-corn-seeds').textContent    = cornUnlocked    ? `×${state.cornSeeds    || 0}` : '🔒';
-  el('toolbar-pumpkin-seeds').textContent = pumpkinUnlocked ? `×${state.pumpkinSeeds || 0}` : '🔒';
-  el('toolbar-truffle-seeds').textContent = truffleUnlocked ? `×${state.truffleSeeds || 0}` : '🔒';
+  // Corn — hide entirely until unlocked
+  el('crop-btn-corn').style.display = cornUnlocked ? '' : 'none';
+  if (cornUnlocked) {
+    el('crop-btn-corn').classList.toggle('selected', plantMode && selectedCrop === 'corn');
+    el('toolbar-corn-seeds').textContent = `×${state.cornSeeds || 0}`;
+  }
+
+  // Pumpkin — hide until unlocked
+  el('crop-btn-pumpkin').style.display = pumpkinUnlocked ? '' : 'none';
+  if (pumpkinUnlocked) {
+    el('crop-btn-pumpkin').classList.toggle('selected', plantMode && selectedCrop === 'pumpkin');
+    el('toolbar-pumpkin-seeds').textContent = `×${state.pumpkinSeeds || 0}`;
+  }
+
+  // Truffle — hide until unlocked
+  el('crop-btn-truffle').style.display = truffleUnlocked ? '' : 'none';
+  if (truffleUnlocked) {
+    el('crop-btn-truffle').classList.toggle('selected', plantMode && selectedCrop === 'truffle');
+    el('toolbar-truffle-seeds').textContent = `×${state.truffleSeeds || 0}`;
+  }
 
   el('tool-toolbar').style.display = showTools ? 'flex' : 'none';
 
@@ -237,8 +270,8 @@ export function updateFarmToolbar(selectedCrop, selectedTool) {
     const waterBtn = el('tool-btn-water');
     const fertBtn  = el('tool-btn-fert');
 
-    waterBtn.style.display = hasWater ? 'flex' : 'none';
-    fertBtn.style.display  = hasFert  ? 'flex' : 'none';
+    waterBtn.style.display = showWater ? 'flex' : 'none';
+    fertBtn.style.display  = showFert  ? 'flex' : 'none';
 
     waterBtn.className = 'tool-btn' + (selectedTool === 'water' ? ' active-water' : '');
     fertBtn.className  = 'tool-btn' + (selectedTool === 'fert'  ? ' active-fert'  : '');
@@ -259,8 +292,9 @@ export function updateHint() {
     hint.textContent = '';
     return;
   }
-  const hasWater = state.stats.everBoughtWater || (state.water || 0) > 0;
-  const hasFert  = state.stats.everBoughtFert  || (state.fertilizer || 0) > 0;
+  const lifetime  = state.lifetimeCoins || 0;
+  const hasWater = lifetime >= WATER_UNLOCK_COINS || state.stats.everBoughtWater || (state.water || 0) > 0;
+  const hasFert  = lifetime >= FERT_UNLOCK_COINS  || state.stats.everBoughtFert  || (state.fertilizer || 0) > 0;
   hint.textContent = (hasWater || hasFert)
     ? 'Tap empty to plant · Select 💧 or 🌿 mode then tap a growing plot · Tap ready to harvest'
     : 'Tap an empty plot to plant · Wait for it to grow · Tap to harvest';
@@ -291,16 +325,21 @@ export function updateShopUI() {
   const tr       = state.truffle || 0;
   const barnUsed = totalBarnContents();
   const cap      = barnCap();
+  const lifetime = state.lifetimeCoins || 0;
 
-  const cornUnlocked    = (state.lifetimeCoins || 0) >= CROPS.corn.unlockCoins;
-  const pumpkinUnlocked = (state.lifetimeCoins || 0) >= CROPS.pumpkin.unlockCoins;
-  const truffleUnlocked = (state.lifetimeCoins || 0) >= CROPS.truffle.unlockCoins;
-  const maxGridReached  = state.rows >= MAX_ROWS && state.cols >= MAX_COLS;
+  const cornUnlocked    = lifetime >= CROPS.corn.unlockCoins;
+  const pumpkinUnlocked = lifetime >= CROPS.pumpkin.unlockCoins;
+  const truffleUnlocked = lifetime >= CROPS.truffle.unlockCoins;
+  const maxRowsReached  = state.rows >= MAX_ROWS;
+  const maxColsReached  = state.cols >= MAX_COLS;
+  const maxGridReached  = maxRowsReached && maxColsReached;
   const wheatHarvests   = state.stats.wheatHarvests || 0;
-  const suppliesUnlocked =
-    state.stats.everBoughtWater || state.stats.everBoughtFert ||
-    (state.water || 0) > 0 || (state.fertilizer || 0) > 0 ||
-    (state.lifetimeCoins || 0) >= 50;
+
+  // Supplies visibility: use lifetime coin thresholds
+  const waterUnlocked = lifetime >= WATER_UNLOCK_COINS || state.stats.everBoughtWater || (state.water || 0) > 0;
+  const fertUnlocked  = lifetime >= FERT_UNLOCK_COINS  || state.stats.everBoughtFert  || (state.fertilizer || 0) > 0;
+  const suppliesUnlocked = waterUnlocked || fertUnlocked;
+
   const growingPlots = state.plots.filter(p => p.state === 'planted');
   const totalStock   = w + c + pk + tr;
 
@@ -332,14 +371,15 @@ export function updateShopUI() {
   el('truffle-seed-count').textContent = `${state.truffleSeeds || 0} owned`;
 
   el('supplies-section-title').style.display = suppliesUnlocked ? 'block' : 'none';
-  el('water-shop-card').style.display        = suppliesUnlocked ? 'flex'  : 'none';
-  el('fert-shop-card').style.display         = suppliesUnlocked ? 'flex'  : 'none';
+  el('water-shop-card').style.display        = waterUnlocked ? 'flex'  : 'none';
+  el('fert-shop-card').style.display         = fertUnlocked  ? 'flex'  : 'none';
 
   el('buy-water1-btn').disabled = state.coins < WATER_COST;
   el('buy-water5-btn').disabled = state.coins < WATER_COST * 5;
   el('water-count').textContent = `${state.water || 0} owned`;
 
-  el('hose-shop-card').style.display = maxGridReached ? 'flex' : 'none';
+  // Water Hose: visible only when max rows reached
+  el('hose-shop-card').style.display = maxRowsReached ? 'flex' : 'none';
   el('buy-hose-btn').disabled = state.coins < hoseCost() ||
     growingPlots.filter(p => !p.watered).length === 0;
 
@@ -347,10 +387,12 @@ export function updateShopUI() {
   el('buy-fert5-btn').disabled = state.coins < FERT_COST * 5;
   el('fert-count').textContent = `${state.fertilizer || 0} owned`;
 
-  el('bigfert-shop-card').style.display = maxGridReached ? 'flex' : 'none';
+  // Big Fertilizer: visible only when max cols reached
+  el('bigfert-shop-card').style.display = maxColsReached ? 'flex' : 'none';
   el('buy-bigfert-btn').disabled = state.coins < bigFertCost() ||
     growingPlots.filter(p => !p.fertilized).length === 0;
 
+  // Gloves: visible after 20 wheat harvests
   el('gloves-shop-card').style.display = wheatHarvests >= 20 ? 'flex' : 'none';
   const gd = state.glovesDurability || 0;
   el('buy-gloves-btn').disabled   = gd > 0 || state.coins < GLOVES_COST;

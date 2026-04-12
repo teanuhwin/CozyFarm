@@ -180,6 +180,9 @@ export const NPC_DATA = {
 export const NPC_ORDER = ['kimchi', 'kalbi', 'ellie', 'twins', 'maru', 'cinna', 'kola'];
 export const CROP_EMOJI = { wheat:'🌾', corn:'🌽', pumpkin:'🎃', truffle:'🍄' };
 
+// Lifetime coins required for merchants to appear
+export const MERCHANT_UNLOCK_COINS = 10000;
+
 const NPC_COOLDOWN_MIN = 1 * 60 * 1000;
 const NPC_COOLDOWN_MAX = 10 * 60 * 1000;
 const NPC_COOLDOWN_UNLOCKED_MIN = 1 * 60 * 1000;
@@ -280,10 +283,24 @@ function generateCapstoneRequest(npcId) {
   };
 }
 
+/**
+ * Unlock the next NPC in order, but only if the previous NPC has
+ * at least 3 affinity points (i.e. 3 quests fulfilled).
+ */
 function tryUnlockNextNpc() {
   const unlocked = state.unlockedNpcs || ['kimchi'];
   const next = NPC_ORDER.find(id => !unlocked.includes(id));
   if (!next) return;
+
+  // Find the NPC that was just before `next` in the order
+  const prevIdx = NPC_ORDER.indexOf(next) - 1;
+  if (prevIdx >= 0) {
+    const prevId = NPC_ORDER[prevIdx];
+    const prevAffinity = state.npcs[prevId]?.affinity || 0;
+    // Require at least 3 completed quests (affinity >= 3) before unlocking next
+    if (prevAffinity < 3) return;
+  }
+
   state.unlockedNpcs.push(next);
   state.npcs[next].nextRequestAt = 0;
   setTimeout(() => toast(`🏘️ ${NPC_DATA[next].name} has moved to town!`), 600);
@@ -344,9 +361,6 @@ export function deliverRequest(npcId) {
   if (req.coins > 0) state.coins        -= req.coins;
 
   const prevLevel = Math.min(5, Math.floor(npc.affinity / 3));
-
-  // Capstone: the reward is the permanent Lv.5 stat bonus (no extra payout)
-  // Just let the normal affinity level-up handling fire below
 
   npc.affinity = Math.min(15, npc.affinity + 1);
   npc.request  = null;
@@ -438,7 +452,7 @@ export function getCornSellMult() {
 export function getCornGrowMult() {
   const lvl = affinityLevel('twins');
   if (lvl >= 5) return 0.50;
-  return 1.0; // L4 instant-grow is rolled once at plant time in main.js
+  return 1.0;
 }
 
 /** Roll the L4 10% instant-grow chance once. Call only at plant time. */
@@ -454,16 +468,15 @@ export function getPumpkinSellMult() {
 }
 
 export function getPumpkinWeatherMult() {
-  // Maru L4: pumpkins grow 30% faster during bad weather
   return affinityLevel('maru') >= 4 ? 0.70 : 1.0;
 }
 
 export function getWaterSpeedup() {
   const lvl = affinityLevel('cinna');
-  if (lvl >= 5) return 0.30; // 70% faster (crops take 30% of base time)
-  if (lvl >= 3) return 0.40; // 60% faster
-  if (lvl >= 1) return 0.55; // 45% faster
-  return null; // base 35% faster (WATER_SPEEDUP = 0.65)
+  if (lvl >= 5) return 0.30;
+  if (lvl >= 3) return 0.40;
+  if (lvl >= 1) return 0.55;
+  return null;
 }
 
 export function getWaterHoseCost(base) {
@@ -497,12 +510,10 @@ export function getBigFertCost(base) {
 }
 
 export function getBigFertYield() {
-  // Big Fert gives same +5 as single fert at max Kola.
-  // The L5 upgrade is the 25% instant-growth proc, not extra yield.
   const lvl = affinityLevel('kola');
   if (lvl >= 3) return 5;
   if (lvl >= 1) return 3;
-  return 2; // base, matches FERT_YIELD fallback
+  return 2;
 }
 
 export function getFertInstantChance() {

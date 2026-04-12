@@ -9,7 +9,7 @@ export const WEATHER_TYPES = {
   flood:    { id:'flood',    icon:'🌊',   name:'Flood',        desc:'One row flooded for the hour!',cls:'flood',   weight:2  },
 };
 
-export const WEATHER_DURATION_MS  = 60 * 60 * 1000; // 1 hour
+export const WEATHER_DURATION_MS  = 60 * 60 * 1000;
 export const SUNNY_SPEEDUP        = 0.80;
 export const OVERCAST_SLOWDOWN    = 1.20;
 
@@ -29,15 +29,19 @@ export const CROPS = {
     emoji: '🎃', seedling: '🌿', name: 'Pumpkin',
     growMs: 15 * 60 * 1000,
     seedCost: 25, sellPrice: 80, yield: 1,
-    unlockCoins: 500,
+    unlockCoins: 2000,
   },
   truffle: {
     emoji: '🍄', seedling: '🟤', name: 'Truffle',
     growMs: 45 * 60 * 1000,
     seedCost: 50, sellPrice: 220, yield: 1,
-    unlockCoins: 1500,
+    unlockCoins: 5000,
   },
 };
+
+// Lifetime coin thresholds for supply visibility
+export const WATER_UNLOCK_COINS = 40;
+export const FERT_UNLOCK_COINS  = 80;
 
 export const ACHIEVEMENTS = [
   { id:'first_harvest',   icon:'🌾', name:'First Harvest',   desc:'Harvest your first crop',          check: s => (s.stats.totalHarvests||0) >= 1 },
@@ -110,7 +114,7 @@ export const state = {
     everBoughtWater: false, everBoughtFert: false,
   },
   begTaps: 0,
-  bodieLastReadTip: null,  // id of the last tip the player tapped/read
+  bodieLastReadTip: null,
   npcs: {},
   unlockedNpcs: ['kimchi'],
   merchant: {
@@ -125,7 +129,6 @@ export const state = {
   },
 };
 
-// settings lives separately from game state (different localStorage key)
 export const settings = {
   dark: true,
   vibrate: false,
@@ -214,7 +217,6 @@ export function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-/** Migrate any old save-data field names forward. */
 export function migrateState() {
   if (state.seeds !== undefined && state.wheatSeeds === undefined) {
     state.wheatSeeds = state.seeds;
@@ -244,14 +246,11 @@ export function migrateState() {
   if (state.stats.everBoughtWater === undefined) state.stats.everBoughtWater = false;
   if (state.stats.everBoughtFert  === undefined) state.stats.everBoughtFert  = false;
   if (state.begTaps === undefined) state.begTaps = 0;
-  // Bodie guide tip — null means "not yet seen any tip"
-  // Migrate Bodie state (rename old field if present)
   if (state.bodieSeenTip !== undefined) {
     state.bodieLastReadTip = state.bodieLastReadTip ?? state.bodieSeenTip;
     delete state.bodieSeenTip;
   }
   if (state.bodieLastReadTip === undefined) state.bodieLastReadTip = null;
-  // Migrate old plot format
   state.plots.forEach(p => {
     if (!p.crop) p.crop = 'wheat';
     if (p.watered         === undefined) p.watered         = false;
@@ -260,7 +259,6 @@ export function migrateState() {
     if (p.yieldRemaining  === undefined) p.yieldRemaining  = null;
     if (p.bonusYield      === undefined) p.bonusYield      = 0;
   });
-  // Migrate merchant state
   if (!state.merchant) state.merchant = { active: null, arrivedAt: 0, nextVisitAt: 0, nextMerchant: null, effect: null, motoOutcome: null, activeItemId: null, activeRiddleId: null };
   if (state.merchant.motoOutcome    === undefined) state.merchant.motoOutcome    = null;
   if (state.merchant.activeItemId   === undefined) state.merchant.activeItemId   = null;
