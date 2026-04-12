@@ -31,8 +31,13 @@
   <!-- ── FARM TAB ── -->
   <div id="tab-farm" class="tab-panel active">
 
-    <!-- Weather banner -->
+    <!-- Weather banner (now compact, with Bodie on the left) -->
     <div class="weather-banner" id="weather-banner">
+      <!-- Bodie guide button -->
+      <button class="bodie-btn" id="bodie-btn" title="Bodie says...">
+        <span class="bodie-paw">🐾</span>
+      </button>
+
       <div class="weather-icon" id="weather-icon">☀️</div>
       <div class="weather-info">
         <div class="weather-name" id="weather-name">Clear</div>
@@ -159,7 +164,6 @@
 
     <div class="section-title">🌱 Seeds</div>
 
-    <!-- Wheat seeds (always visible) -->
     <div class="shop-card">
       <div class="shop-icon seed-icon">🌾<span class="seed-badge">🌱</span></div>
       <div class="shop-info">
@@ -173,7 +177,6 @@
       </div>
     </div>
 
-    <!-- Corn seeds (hidden until unlocked) -->
     <div id="corn-shop-card" class="shop-card" style="display:none">
       <div class="shop-icon seed-icon">🌽<span class="seed-badge">🌱</span></div>
       <div class="shop-info">
@@ -188,7 +191,6 @@
       </div>
     </div>
 
-    <!-- Pumpkin seeds -->
     <div id="pumpkin-shop-card" class="shop-card" style="display:none">
       <div class="shop-icon seed-icon">🎃<span class="seed-badge">🌱</span></div>
       <div class="shop-info">
@@ -203,7 +205,6 @@
       </div>
     </div>
 
-    <!-- Truffle seeds -->
     <div id="truffle-shop-card" class="shop-card" style="display:none">
       <div class="shop-icon seed-icon">🍄<span class="seed-badge">🌱</span></div>
       <div class="shop-info">
@@ -218,7 +219,6 @@
       </div>
     </div>
 
-    <!-- Supplies -->
     <div class="section-title" id="supplies-section-title" style="display:none">🧪 Supplies</div>
 
     <div id="water-shop-card" class="shop-card" style="display:none">
@@ -281,7 +281,6 @@
       </div>
     </div>
 
-    <!-- Barn -->
     <div class="section-title">🏚️ Barn</div>
     <div class="shop-card">
       <div class="shop-icon">🏚️</div>
@@ -296,10 +295,8 @@
       </div>
     </div>
 
-    <!-- Expand Farm -->
     <div class="section-title">🏡 Expand Farm</div>
 
-    <!-- Shown at 6×6 max; expand cards hidden -->
     <div class="max-farm-banner" id="max-farm-banner">
       <div class="mfb-icon">🗺️</div>
       <div class="mfb-title">Max Farm Size Reached!</div>
@@ -419,7 +416,7 @@
       </div>
     </div>
 
-    <p class="empty-hint" style="margin-top:32px;font-size:11px;">🌾 Cozy Farm v3.8 · Maru keeps messin wit pumpkins</p>
+    <p class="empty-hint" style="margin-top:32px;font-size:11px;">🌾 Cozy Farm 4.0 · Bodie enters the field.</p>
   </div>
 
 </main>
@@ -490,7 +487,6 @@
   </div>
 </div>
 
-<!-- Module entry point — must be type="module" for ES6 imports -->
 <script type="module" src="js/main.js"></script>
 
 </body>
