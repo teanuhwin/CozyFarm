@@ -1,7 +1,4 @@
 // ── MAIN ENTRY POINT ──────────────────────────────────────
-// Owns: tick loop, player input handlers, game actions.
-// All modules share the single `state` object by reference.
-
 import {
   state, settings,
   saveState, loadState, saveSetting, loadSettings, clearState,
@@ -41,15 +38,17 @@ import {
   updateWeatherBanner, updateTownVisibility, updateTownBadge,
   renderTownTab, tickTownCooldowns, renderLogTab,
   updateMerchantUI, openMerchantModal, tickMerchantBadge,
+  updateBodieUI,
 } from './ui.js';
+
+import { getActiveTip, markBodieRead, isBodieUnread } from './bodie.js';
 
 // ── INTERACTION STATE ─────────────────────────────────────
 let selectedCrop = 'wheat';
-let selectedTool = 'plant'; // 'plant' | 'water' | 'fert'
+let selectedTool = 'plant';
 let notifiedPlots = new Set();
-let lastHarvestTime = 0; // for Moto sticky fingers throttle
+let lastHarvestTime = 0;
 
-// Helper to get affinity level for an NPC without importing affinityLevel
 function affinityLevelFor(npcId) {
   return Math.min(5, Math.floor((state.npcs[npcId]?.affinity || 0) / 3));
 }
@@ -66,11 +65,19 @@ function selectTool(tool) {
   updateFarmToolbar(selectedCrop, selectedTool);
 }
 
-
-/** Record when a plot was watered. The tick loop uses wateredAt to compute speedup. */
 function applyWaterSpeedup(plot) {
   plot.wateredAt = Date.now();
 }
+
+// ── BODIE CLICK ───────────────────────────────────────────
+function clickBodie() {
+  const tip = getActiveTip();
+  if (!tip) return;
+  toast(`🐾 ${tip.text}`);
+  markBodieRead();
+  updateBodieUI();
+}
+
 // ── PLOT INTERACTIONS ─────────────────────────────────────
 function clickPlot(idx) {
   const plot = state.plots[idx];
@@ -82,9 +89,8 @@ function clickPlot(idx) {
     if (plot.watered) { toast('Already watered!'); return; }
     if ((state.water || 0) < 1) { toast('No water! Buy some in the Shop.'); return; }
     state.water--;
-    const areaSize = getWaterAreaSize(); // 0 = single plot, 1 = 3x3
+    const areaSize = getWaterAreaSize();
     if (areaSize > 0) {
-      // 3x3 area around the tapped plot
       const row = Math.floor(idx / state.cols);
       const col = idx % state.cols;
       let wetCount = 0;
@@ -111,6 +117,7 @@ function clickPlot(idx) {
       toast('💧 Watered! Growing faster.');
     }
     checkAchievements();
+    updateBodieUI();
     return;
   }
 
@@ -130,16 +137,15 @@ function clickPlot(idx) {
     updateFarmToolbar(selectedCrop, selectedTool);
     toast('🌿 Fertilized! Extra yield on harvest.');
     checkAchievements();
+    updateBodieUI();
     return;
   }
 
-  // Flooded plots are uninteractable
   if (plot.state === 'flooded') {
     toast('🌊 This plot is flooded! Wait for the flood to pass.');
     return;
   }
 
-  // Plant mode (default)
   if (plot.state === 'empty') {
     const seedKey = selectedCrop + 'Seeds';
     if ((state[seedKey] || 0) < 1) {
@@ -152,12 +158,10 @@ function clickPlot(idx) {
     plot.plantedAt  = Date.now();
     plot.watered    = false;
     plot.fertilized = false;
-    // Twins L5: 60% chance corn is pre-watered when planted
     if (selectedCrop === 'corn' && affinityLevelFor('twins') >= 5 && Math.random() < 0.60) {
       plot.watered  = true;
       plot.wateredAt = Date.now();
     }
-    // Twins L4: 10% chance corn grows instantly — roll once at plant time
     if (selectedCrop === 'corn' && rollCornInstant()) {
       plot.state = 'ready';
       toast('⚡ Chaos Corn! This one grew instantly!');
@@ -166,6 +170,7 @@ function clickPlot(idx) {
     renderPlot(idx);
     updateHeader();
     updateFarmToolbar(selectedCrop, selectedTool);
+    updateBodieUI();
   } else if (plot.state === 'planted') {
     showPlotOptions(idx);
   } else if (plot.state === 'ready') {
@@ -188,31 +193,15 @@ function showPlotOptions(idx) {
   });
   const waterSpeedup = getWaterSpeedup() ?? WATER_SPEEDUP;
   const effectiveElapsed = computeEffectiveElapsed(plot, waterSpeedup);
-  
-  /* OLD CODE
+
   const remainingEffectiveMs = Math.max(0, growMs - effectiveElapsed);
-  // Convert back to real wall-clock seconds: if watered, effective time runs faster
-  // so real ms remaining = effective ms remaining * speedup fraction
-  const remainingRealMs = plot.watered && plot.wateredAt
-    ? remainingEffectiveMs * waterSpeedup
-    : remainingEffectiveMs;
-  const remaining = Math.ceil(remainingRealMs / 1000);
-  */
-  
-//NEW CODE FIX
-  const remainingEffectiveMs = Math.max(0, growMs - effectiveElapsed);
-  
-  // FIXED: Explicitly use the speedup fraction for watered plots to convert 
-  // effective "growth points" back into real wall-clock milliseconds.
   let remainingRealMs = remainingEffectiveMs;
   if (plot.watered) {
     const cinnaLvl = affinityLevelFor('cinna');
     const waterFactor = cinnaLvl >= 5 ? 0.30 : cinnaLvl >= 3 ? 0.40 : cinnaLvl >= 1 ? 0.55 : 0.65;
     remainingRealMs = remainingEffectiveMs * waterFactor;
   }
-  
   const remaining = Math.ceil(remainingRealMs / 1000);
-//END OF FIX
 
   const mods = [];
   if (plot.watered)    mods.push('💧 watered');
@@ -228,7 +217,6 @@ function showPlotOptions(idx) {
 }
 
 function harvestPlot(idx) {
-  // Moto sticky fingers: throttle harvests to 1 per 10s
   const stickyDelay = getStickyDelay();
   if (stickyDelay > 0 && Date.now() - lastHarvestTime < stickyDelay) {
     const remaining = Math.ceil((stickyDelay - (Date.now() - lastHarvestTime)) / 1000);
@@ -241,28 +229,20 @@ function harvestPlot(idx) {
   const crop    = CROPS[plot.crop || 'wheat'];
   const cropKey = plot.crop || 'wheat';
 
-  // ── PARTIAL HARVEST CONTINUATION ─────────────────────────
-  // If yieldRemaining is already set, this is a follow-up tap after a partial harvest.
-  // Use the stored remainder instead of recomputing yield from scratch (which would
-  // cause the infinite-harvest bug — same bonuses applied again each tap).
   let yieldAmt;
   if (plot.yieldRemaining != null) {
     yieldAmt = plot.yieldRemaining;
   } else {
-    // ── FIRST HARVEST — compute full yield ────────────────
     yieldAmt = crop.yield;
 
-    // Kola: enhanced fertilizer yield
     if (plot.fertilized) {
       const fertBonus = getFertYield();
       yieldAmt += (fertBonus !== null ? fertBonus : FERT_YIELD);
     }
 
-    // Moto miracle harvest: +5 yield
     const miracleBonus = getMiracleYield();
     if (miracleBonus > 0) yieldAmt += miracleBonus;
 
-    // Kalbi: wheat yield bonus
     if (cropKey === 'wheat') {
       const wheatBonus = getWheatYieldBonus();
       if (wheatBonus && Math.random() < wheatBonus.chance) {
@@ -270,13 +250,10 @@ function harvestPlot(idx) {
       }
     }
 
-    // Twins: corn yield bonus
     if (cropKey === 'corn') yieldAmt += getCornYieldBonus();
 
-    // Ellie: truffle min yield
     if (cropKey === 'truffle') yieldAmt = Math.max(getTruffleMinYield(), yieldAmt);
 
-    // Maru L5: consume any bonus yield accumulated from neighboring pumpkin harvests
     if (cropKey === 'pumpkin' && (plot.bonusYield || 0) > 0) {
       yieldAmt += plot.bonusYield;
     }
@@ -286,14 +263,12 @@ function harvestPlot(idx) {
   const space = weightless ? Infinity : (barnCap() - totalBarnContents());
   if (!weightless && space <= 0) { toast('🏚️ Barn full! Sell some crops first.'); return; }
 
-  // Partial harvest: take only what fits, leave the plot as ready if there's more
   const partialHarvest = !weightless && yieldAmt > space;
   const actualHarvest = weightless ? yieldAmt : Math.min(yieldAmt, space);
   const takenAmt = actualHarvest;
 
   state[cropKey] = (state[cropKey] || 0) + takenAmt;
 
-  // Maru L2: 10% chance to find a truffle when harvesting pumpkin
   if (cropKey === 'pumpkin' && affinityLevelFor('maru') >= 2 && Math.random() < 0.10) {
     const truffleSpace = barnCap() - totalBarnContents();
     if (truffleSpace > 0) {
@@ -302,10 +277,8 @@ function harvestPlot(idx) {
     }
   }
 
-  // Maru L5: +1 bonus yield stored on each adjacent (8-directional) planted pumpkin,
-  // consumed when that plot is harvested (not dumped to barn immediately)
   let maruBonus = 0;
-if (cropKey === 'pumpkin' && affinityLevelFor('maru') >= 5) {
+  if (cropKey === 'pumpkin' && affinityLevelFor('maru') >= 5) {
     const harvestRow = Math.floor(idx / state.cols);
     const harvestCol = idx % state.cols;
     state.plots.forEach((p, i) => {
@@ -324,10 +297,6 @@ if (cropKey === 'pumpkin' && affinityLevelFor('maru') >= 5) {
     });
   }
 
-  // Kola L5: fertilizer triggers instant growth (handled at fertilize time, but also
-  // at harvest we note if the 25% proc is already applied from planting — no action needed here)
-
-  // Gloves seed-recovery
   let seedReturned = false;
   const curGlovesUses = getGlovesUses();
   const glovesChance  = isBarrenEarth() ? 0 : (getGlovesChance() !== null ? getGlovesChance() : GLOVES_CHANCE);
@@ -344,7 +313,6 @@ if (cropKey === 'pumpkin' && affinityLevelFor('maru') >= 5) {
       state.stats.glovesUses = (state.stats.glovesUses || 0) + 1;
       if (state.glovesDurability === 0) toast('🧤 Gloves worn out! Buy new ones.');
     } else {
-      // Golden Mitts — never decrement
       state.stats.glovesUses = (state.stats.glovesUses || 0) + 1;
     }
   }
@@ -360,10 +328,8 @@ if (cropKey === 'pumpkin' && affinityLevelFor('maru') >= 5) {
     plot.bonusYield     = 0;
     notifiedPlots.delete(idx);
   } else {
-    // Store how much is still left so next tap picks up where we left off
     plot.yieldRemaining = yieldAmt - takenAmt;
   }
-  // Partial: plot stays 'ready' so player can harvest the rest after making barn space
 
   state.stats.totalHarvests   = (state.stats.totalHarvests  || 0) + takenAmt;
   if (cropKey === 'wheat')   state.stats.wheatHarvests  = (state.stats.wheatHarvests  || 0) + takenAmt;
@@ -381,6 +347,7 @@ if (cropKey === 'pumpkin' && affinityLevelFor('maru') >= 5) {
   updateHint();
   updateBegZone();
   checkAchievements();
+  updateBodieUI();
 }
 
 // ── SELL FUNCTIONS ────────────────────────────────────────
@@ -395,12 +362,10 @@ function sellAllCrops() {
       if (k === 'corn')    price = Math.round(price * getCornSellMult());
       if (k === 'pumpkin') price = Math.round(price * getPumpkinSellMult());
       if (k === 'truffle') price = getTruffleSellPrice(price);
-      // Merchant flat multiplier (Helios or Triple Sell) applied last
       const mMult = getMerchantSellMult();
       if (mMult !== 1.0) {
         const before = state[k];
         price = Math.round(price * mMult);
-        // Triple sell consumes uses per item sold
         if (mMult === 3.0) for (let _i = 0; _i < before; _i++) consumeTripleSellUse();
       }
       earned += state[k] * price;
@@ -415,7 +380,7 @@ function sellAllCrops() {
   saveState();
   updateHeader(); updateShopUI(); updateFarmToolbar(selectedCrop, selectedTool);
   toast(`🪙 Sold everything for ${earned} coins!`);
-  checkAchievements(); updateBegZone();
+  checkAchievements(); updateBegZone(); updateBodieUI();
 }
 
 function sellCrop(cropKey, amount) {
@@ -423,13 +388,11 @@ function sellCrop(cropKey, amount) {
   if (stock === 0) { toast(`No ${CROPS[cropKey].name} to sell!`); return; }
   const qty = amount === 'all' ? stock : Math.min(amount, stock);
 
-  // Apply NPC sell price bonuses
   let basePrice = CROPS[cropKey].sellPrice;
   if (cropKey === 'wheat')   basePrice = Math.round(basePrice * getWheatSellMult());
   if (cropKey === 'corn')    basePrice = Math.round(basePrice * getCornSellMult());
   if (cropKey === 'pumpkin') basePrice = Math.round(basePrice * getPumpkinSellMult());
   if (cropKey === 'truffle') basePrice = getTruffleSellPrice(basePrice);
-  // Merchant flat multiplier applied last
   const mMult = getMerchantSellMult();
   if (mMult === 3.0) for (let _i = 0; _i < qty; _i++) consumeTripleSellUse();
   basePrice = Math.round(basePrice * getMerchantSellMult());
@@ -444,7 +407,7 @@ function sellCrop(cropKey, amount) {
   saveState();
   updateHeader(); updateShopUI(); updateFarmToolbar(selectedCrop, selectedTool);
   toast(`🪙 Sold ${qty === 1 ? `1 ${CROPS[cropKey].name}` : `${qty} ${CROPS[cropKey].name}`} for ${earned} coins!`);
-  checkAchievements();
+  checkAchievements(); updateBodieUI();
 }
 
 function checkUnlocks(prev, next) {
@@ -465,6 +428,7 @@ function buySeeds(cropKey, n) {
   saveState();
   updateHeader(); updateShopUI(); updateFarmToolbar(selectedCrop, selectedTool);
   toast(`${CROPS[cropKey].seedling} Bought ${n} ${CROPS[cropKey].name} seed${n > 1 ? 's' : ''}!`);
+  updateBodieUI();
 }
 
 function buyWater(n) {
@@ -476,6 +440,7 @@ function buyWater(n) {
   saveState();
   updateHeader(); updateShopUI(); updateFarmToolbar(selectedCrop, selectedTool); updateHint();
   toast(`💧 Bought ${n} water!`);
+  updateBodieUI();
 }
 
 function buyFertilizer(n) {
@@ -487,6 +452,7 @@ function buyFertilizer(n) {
   saveState();
   updateHeader(); updateShopUI(); updateFarmToolbar(selectedCrop, selectedTool); updateHint();
   toast(`🌿 Bought ${n} fertilizer!`);
+  updateBodieUI();
 }
 
 function buyWaterHose() {
@@ -495,7 +461,6 @@ function buyWaterHose() {
   const targets = state.plots.filter(p => p.state === 'planted' && !p.watered);
   if (targets.length === 0) { toast('No unwatered growing plots!'); return; }
   state.coins -= cost;
-  // Cinna L5: 2×2 area boost — water affects each plot + its neighbours
   if (getWaterHoseAreaBoost()) {
     state.plots.forEach(p => { if (p.state === 'planted' && !p.watered) { p.watered = true; applyWaterSpeedup(p); } });
     const wetted = state.plots.filter(p => p.state === 'planted' && p.watered).length;
@@ -515,7 +480,6 @@ function buyBigFertilizer() {
   if (targets.length === 0) { toast('No unfertilized growing plots!'); return; }
   state.coins -= cost;
   targets.forEach(p => { p.fertilized = true; });
-  // Kola L5: 25% chance fertilizer triggers instant growth
   const instantChance = getFertInstantChance();
   if (instantChance > 0) {
     targets.forEach(p => { if (Math.random() < instantChance) p.state = 'ready'; });
@@ -536,6 +500,7 @@ function buyGloves() {
   saveState(); updateHeader(); updateShopUI();
   const usesLabel = uses === Infinity ? 'unlimited uses ✨' : `${state.glovesDurability} uses`;
   toast(`🧤 Gloves equipped! ${usesLabel}.`);
+  updateBodieUI();
 }
 
 function upgradeBarn() {
@@ -548,6 +513,7 @@ function upgradeBarn() {
   saveState();
   updateHeader(); updateShopUI(); updateTownVisibility();
   toast(`🏚️ Barn upgraded! Now holds ${upgrade.cap} crops.`);
+  updateBodieUI();
 }
 
 // ── EXPAND FARM ───────────────────────────────────────────
@@ -564,6 +530,7 @@ function expandGrid(type) {
   renderGrid(); updateHeader(); updateShopUI(); updateTownVisibility();
   toast(type === 'row' ? '🏡 New row added!' : '🏡 New column added!');
   checkAchievements();
+  updateBodieUI();
 }
 
 // ── BEG SYSTEM ────────────────────────────────────────────
@@ -575,6 +542,7 @@ function begForSeeds() {
     saveState();
     updateHeader(); updateFarmToolbar(selectedCrop, selectedTool); updateBegZone();
     toast('🙏 A kind stranger gave you 1 wheat seed!');
+    updateBodieUI();
   } else {
     saveState();
     const prog = el('beg-progress');
@@ -605,9 +573,8 @@ function checkAchievements() {
 }
 
 // ── WEATHER ───────────────────────────────────────────────
-const WEATHER_EVENT_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const WEATHER_EVENT_INTERVAL = 5 * 60 * 1000;
 
-// ── Called once when weather first changes ────────────────
 function onWeatherStart(id) {
   if (!state.stats.weatherCounts) state.stats.weatherCounts = {};
   state.stats.weatherCounts[id] = (state.stats.weatherCounts[id] || 0) + 1;
@@ -629,9 +596,10 @@ function onWeatherStart(id) {
   } else {
     toast('🌤️ Skies have cleared up.');
   }
+  // Weather change might shift Bodie tip (especially thunder/flood/sunny/overcast)
+  updateBodieUI();
 }
 
-// ── Recurring rain: water all unwatered plots ─────────────
 function doRainWater() {
   let count = 0;
   state.plots.forEach(p => {
@@ -645,10 +613,9 @@ function doRainWater() {
   } else {
     toast('🌧️ Rain — all plots already watered!');
   }
-  checkAchievements(); // always check — catches first-ever rain-watered event
+  checkAchievements();
 }
 
-// ── Recurring thunder: zap 1–5 random plots ──────────────
 function doThunderZap() {
   const wheatImmune = getWheatWeatherImmune();
   const occupied = state.plots
@@ -677,7 +644,6 @@ function doThunderZap() {
   }
 }
 
-// ── Flood start: wipe a row and lock it ──────────────────
 function doFloodStart() {
   if (isPhotosynthActive()) {
     toast('🌿 Photosynthesis blocked the flood!');
@@ -685,7 +651,6 @@ function doFloodStart() {
     return;
   }
   const wheatImmune = getWheatWeatherImmune();
-  // Pick any row (not just occupied) — the row gets locked either way
   const row = Math.floor(Math.random() * state.rows);
   state.weather.floodedRow = row;
   let lost = 0;
@@ -708,7 +673,6 @@ function doFloodStart() {
   renderGrid(); checkAchievements();
 }
 
-// ── Flood end: restore flooded plots to empty ─────────────
 function doFloodEnd() {
   state.plots.forEach((p, i) => {
     if (p.state === 'flooded') {
@@ -718,6 +682,8 @@ function doFloodEnd() {
   state.weather.floodedRow = -1;
   toast('🌊 Flood receded! Row is usable again.');
   renderGrid();
+  // Flood ended — tip may revert; refresh Bodie
+  updateBodieUI();
 }
 
 function tickWeather() {
@@ -727,7 +693,6 @@ function tickWeather() {
   const cur     = state.weather.current;
 
   if (elapsed >= WEATHER_DURATION_MS) {
-    // Weather is ending — clear flood row if active
     if (cur === 'flood' && state.weather.floodedRow >= 0) doFloodEnd();
     const newW = pickWeather();
     state.weather.current        = newW;
@@ -738,7 +703,6 @@ function tickWeather() {
     saveState();
     onWeatherStart(newW);
   } else {
-    // Recurring events during active weather
     if (cur === 'rain' && now - (state.weather.lastRainAt || 0) >= WEATHER_EVENT_INTERVAL) {
       doRainWater();
       saveState();
@@ -759,6 +723,8 @@ function tick() {
   tickMerchants();
   tickMerchantBadge();
   tickTownCooldowns();
+  // Refresh Bodie once per second to catch tip transitions without player action
+  updateBodieUI();
 
   const weatherMult = currentWeatherMultiplier();
   const currentWeather = (state.weather && state.weather.current) || 'clear';
@@ -766,9 +732,8 @@ function tick() {
   let changed = false;
 
   state.plots.forEach((plot, i) => {
-    if (plot.state === 'flooded') return; // locked during flood
+    if (plot.state === 'flooded') return;
     if (plot.state === 'planted') {
-      // Moto frozen soil: skip timer advancement
       if (isTimerFrozen()) { renderPlot(i); return; }
 
       const cropKey = plot.crop || 'wheat';
@@ -805,7 +770,6 @@ function closeModal()   { el('reset-modal').classList.remove('open'); }
 
 function doReset() {
   clearState();
-  // Reset all fields in-place (keeps the same object reference)
   Object.assign(state, {
     coins: 0, lifetimeCoins: 0,
     wheatSeeds: 5, cornSeeds: 0, pumpkinSeeds: 0, truffleSeeds: 0,
@@ -823,6 +787,7 @@ function doReset() {
       everBoughtWater: false, everBoughtFert: false,
     },
     begTaps: 0,
+    bodieLastReadTip: null,
     npcs: {},
     unlockedNpcs: ['kimchi'],
   });
@@ -841,6 +806,7 @@ function doReset() {
   updateTownVisibility();
   updateTownBadge();
   updateMerchantUI();
+  updateBodieUI();
   closeModal();
   toast('🌱 Farm reset! Starting fresh.');
 }
@@ -865,7 +831,6 @@ function uploadSave(file) {
   reader.onload = e => {
     try {
       const parsed = JSON.parse(e.target.result);
-      // Basic validation: must have coins and plots
       if (typeof parsed.coins !== 'number' || !Array.isArray(parsed.plots)) {
         toast('❌ Invalid save file.');
         return;
@@ -886,6 +851,7 @@ function uploadSave(file) {
       updateTownBadge();
       updateMerchantUI();
       checkAchievements();
+      updateBodieUI();
       toast('✅ Save loaded! Welcome back.');
     } catch (err) {
       toast('❌ Could not read save file.');
@@ -895,26 +861,20 @@ function uploadSave(file) {
 }
 
 // ── EVENT DELEGATION ──────────────────────────────────────
-// Replaces inline onclick="" on every element in HTML.
-// One listener on <main> handles all game-action clicks.
 function wireEvents() {
-  // Plot clicks (fired via custom event from ui.js renderGrid)
   document.getElementById('farm-grid').addEventListener('plot-click', e => {
     clickPlot(e.detail.idx);
   });
 
-  // Deliver buttons in town tab (use data-deliver attribute)
   document.getElementById('npc-list').addEventListener('click', e => {
     const btn = e.target.closest('[data-deliver]');
     if (btn) npcDeliver(btn.dataset.deliver);
   });
 
-  // Tab bar
   document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab, btn));
   });
 
-  // Toolbar — crop & tool buttons
   document.getElementById('crop-btn-wheat').addEventListener('click',   () => selectCrop('wheat'));
   document.getElementById('crop-btn-corn').addEventListener('click',    () => selectCrop('corn'));
   document.getElementById('crop-btn-pumpkin').addEventListener('click', () => selectCrop('pumpkin'));
@@ -922,7 +882,9 @@ function wireEvents() {
   document.getElementById('tool-btn-water').addEventListener('click',   () => selectTool('water'));
   document.getElementById('tool-btn-fert').addEventListener('click',    () => selectTool('fert'));
 
-  // Shop — sell
+  // Bodie guide button
+  document.getElementById('bodie-btn').addEventListener('click', () => clickBodie());
+
   document.getElementById('sell-all-crops-btn').addEventListener('click', () => sellAllCrops());
   document.getElementById('sell-wheat-all-btn').addEventListener('click', () => sellCrop('wheat', 'all'));
   document.getElementById('sell-wheat1-btn').addEventListener('click',    () => sellCrop('wheat', 1));
@@ -933,7 +895,6 @@ function wireEvents() {
   document.getElementById('sell-truffle-all-btn').addEventListener('click', () => sellCrop('truffle', 'all'));
   document.getElementById('sell-truffle1-btn').addEventListener('click',    () => sellCrop('truffle', 1));
 
-  // Shop — buy seeds
   document.getElementById('buy-wheat1-btn').addEventListener('click',    () => buySeeds('wheat', 1));
   document.getElementById('buy-wheat10-btn').addEventListener('click',   () => buySeeds('wheat', 10));
   document.getElementById('buy-corn1-btn').addEventListener('click',     () => buySeeds('corn', 1));
@@ -943,7 +904,6 @@ function wireEvents() {
   document.getElementById('buy-truffle1-btn').addEventListener('click',  () => buySeeds('truffle', 1));
   document.getElementById('buy-truffle3-btn').addEventListener('click',  () => buySeeds('truffle', 3));
 
-  // Shop — supplies
   document.getElementById('buy-water1-btn').addEventListener('click',  () => buyWater(1));
   document.getElementById('buy-water5-btn').addEventListener('click',  () => buyWater(5));
   document.getElementById('buy-hose-btn').addEventListener('click',    () => buyWaterHose());
@@ -952,15 +912,12 @@ function wireEvents() {
   document.getElementById('buy-bigfert-btn').addEventListener('click', () => buyBigFertilizer());
   document.getElementById('buy-gloves-btn').addEventListener('click',  () => buyGloves());
 
-  // Shop — barn & farm
   document.getElementById('barn-upgrade-btn').addEventListener('click', () => upgradeBarn());
   document.getElementById('row-btn').addEventListener('click',          () => expandGrid('row'));
   document.getElementById('col-btn').addEventListener('click',          () => expandGrid('col'));
 
-  // Beg button
   document.getElementById('beg-btn').addEventListener('click', () => begForSeeds());
 
-  // Settings — theme toggle
   document.getElementById('setting-dark').addEventListener('change', function () {
     saveSetting('dark', this.checked);
     applyTheme();
@@ -969,23 +926,19 @@ function wireEvents() {
     saveSetting('vibrate', this.checked);
   });
 
-  // Reset modal
   document.querySelector('[data-action="confirm-reset"]').addEventListener('click', confirmReset);
   document.querySelector('[data-action="close-modal"]').addEventListener('click',   closeModal);
   document.querySelector('[data-action="do-reset"]').addEventListener('click',      doReset);
 
-  // Save / Load
   document.getElementById('download-save-btn').addEventListener('click', downloadSave);
   document.getElementById('upload-save-input').addEventListener('change', function() {
     uploadSave(this.files[0]);
-    this.value = ''; // reset so same file can be re-uploaded
+    this.value = '';
   });
 
-  // Merchant icons → open modal
   document.getElementById('merchant-mochi').addEventListener('click', () => openMerchantModal('mochi'));
   document.getElementById('merchant-moto').addEventListener('click',  () => openMerchantModal('moto'));
 
-  // Merchant modal buttons
   document.getElementById('merchant-dismiss-btn').addEventListener('click', () => {
     el('merchant-modal').classList.remove('open');
     dismissMerchant();
@@ -999,7 +952,6 @@ function wireEvents() {
     dismissMerchant();
   });
 
-  // Moto outcome modal dismiss
   document.getElementById('moto-outcome-close').addEventListener('click', () => {
     import('./merchants.js').then(({ clearMotoOutcome }) => clearMotoOutcome());
   });
@@ -1016,9 +968,6 @@ function init() {
   el('setting-dark').checked    = settings.dark;
   el('setting-vibrate').checked = settings.vibrate;
 
-  // Catch up crops that grew while the page was closed.
-  // Use the same shared helpers as the live tick loop so all NPC and weather
-  // bonuses are respected — even on cold start.
   const catchUpWeatherMult = currentWeatherMultiplier();
   const catchUpWeather     = (state.weather && state.weather.current) || 'clear';
   const catchUpBadWeather  = ['rain', 'thunder', 'flood'].includes(catchUpWeather);
@@ -1050,6 +999,7 @@ function init() {
   updateTownBadge();
   updateWeatherBanner();
   updateMerchantUI();
+  updateBodieUI();
   checkAchievements();
 
   setInterval(tick, 1000);

@@ -15,7 +15,6 @@ import {
 } from './npcs.js';
 
 // ── LOCAL AFFINITY HELPER (avoids circular import) ────────
-// Mirrors affinityLevel() in npcs.js — reads state directly.
 function npcLevel(id) {
   return Math.min(5, Math.floor(((state.npcs && state.npcs[id] && state.npcs[id].affinity) || 0) / 3));
 }
@@ -66,11 +65,26 @@ export function switchTab(name, btn) {
   if (name === 'town') renderTownTab();
 }
 
+// ── BODIE UI ──────────────────────────────────────────────
+/**
+ * Refresh the Bodie button appearance.
+ * Called from tick loop and after any state change that might shift the tip.
+ * Importing bodie.js lazily here avoids a circular dependency chain.
+ */
+export function updateBodieUI() {
+  import('./bodie.js').then(({ isBodieUnread }) => {
+    const btn = el('bodie-btn');
+    if (!btn) return;
+    const unread = isBodieUnread();
+    btn.classList.toggle('bodie-unread', unread);
+    btn.classList.toggle('bodie-read',  !unread);
+  });
+}
+
 // ── FARM GRID ─────────────────────────────────────────────
 export function renderGrid() {
   const grid = el('farm-grid');
   grid.style.gridTemplateColumns = `repeat(${state.cols}, 1fr)`;
-  // Apply column-count class so CSS can apply 6-col overflow fixes
   grid.className = `farm-grid cols-${state.cols}`;
 
   const needed = state.rows * state.cols;
@@ -87,11 +101,8 @@ export function renderGrid() {
   }
   while (grid.children.length > needed) grid.removeChild(grid.lastChild);
 
-  // Re-bind click handlers after DOM changes
   Array.from(grid.children).forEach((div, i) => {
     div.onclick = () => {
-      // clickPlot is defined in main.js and attached to window for HTML onclick attrs;
-      // here we dispatch a custom event instead to keep modules decoupled.
       div.dispatchEvent(new CustomEvent('plot-click', { bubbles: true, detail: { idx: i } }));
     };
   });
@@ -141,11 +152,8 @@ export function renderPlot(idx) {
       const weatherMult    = currentWeatherMultiplier();
       const curWeather     = (state.weather && state.weather.current) || 'clear';
       const isBadWeather   = ['rain', 'thunder', 'flood'].includes(curWeather);
-      // Read photosynthActive directly from state to avoid a circular import
       const eff            = state.merchant && state.merchant.effect;
       const photosynthOn   = !!(eff && eff.id === 'photosynth' && (!eff.expiresAt || Date.now() < eff.expiresAt));
-      // Derive NPC grow-mult values from the local npcLevel() helper so this
-      // stays in sync with npcs.js without duplicating import logic.
       const effectiveGrowMs = computeGrowMs(cropKey, weatherMult, isBadWeather, {
         truffleGrowMult:    npcLevel('ellie') >= 4 ? 0.80 : npcLevel('ellie') >= 2 ? 0.90 : 1.0,
         cornGrowMult:       npcLevel('twins') >= 5 ? 0.50 : 1.0,
@@ -153,7 +161,6 @@ export function renderPlot(idx) {
         kalbiL5:            npcLevel('kalbi') >= 5,
         photosynthActive:   photosynthOn,
       });
-      // Derive water speedup from local npcLevel() — mirrors getWaterSpeedup() in npcs.js
       const cinnaLvl   = npcLevel('cinna');
       const waterSpeed = cinnaLvl >= 5 ? 0.30 : cinnaLvl >= 3 ? 0.40 : cinnaLvl >= 1 ? 0.55 : 0.65;
       const effectiveElapsed = computeEffectiveElapsed(plot, waterSpeed);
@@ -201,7 +208,6 @@ export function updateHeader() {
 }
 
 // ── FARM TOOLBAR ──────────────────────────────────────────
-// selectedCrop / selectedTool are owned by main.js and passed in as args
 export function updateFarmToolbar(selectedCrop, selectedTool) {
   const cornUnlocked    = (state.lifetimeCoins || 0) >= CROPS.corn.unlockCoins;
   const pumpkinUnlocked = (state.lifetimeCoins || 0) >= CROPS.pumpkin.unlockCoins;
@@ -249,7 +255,6 @@ export function updateFarmToolbar(selectedCrop, selectedTool) {
 export function updateHint() {
   const hint = el('farm-hint');
   if (!hint) return;
-  // Hide once farm is maxed — no need to educate an expert
   if (state.rows >= MAX_ROWS && state.cols >= MAX_COLS) {
     hint.textContent = '';
     return;
@@ -264,7 +269,6 @@ export function updateHint() {
 // ── BEG ZONE ──────────────────────────────────────────────
 export function updateBegZone() {
   const totalSeeds = (state.wheatSeeds||0)+(state.cornSeeds||0)+(state.pumpkinSeeds||0)+(state.truffleSeeds||0);
-  // Broke = no seeds, no sellable crops, AND can't afford the cheapest seed (wheat = 5🪙)
   const broke = totalSeeds === 0 && totalBarnContents() === 0 && state.coins < CROPS.wheat.seedCost;
   const zone  = el('beg-zone');
   if (!zone) return;
@@ -297,18 +301,15 @@ export function updateShopUI() {
     state.stats.everBoughtWater || state.stats.everBoughtFert ||
     (state.water || 0) > 0 || (state.fertilizer || 0) > 0 ||
     (state.lifetimeCoins || 0) >= 50;
-  const growingPlots = state.plots.filter(p => p.state === 'planted'); // flooded plots can't be planted so no filter needed
+  const growingPlots = state.plots.filter(p => p.state === 'planted');
   const totalStock   = w + c + pk + tr;
 
-  // Sell all
   el('sell-all-crops-btn').disabled = totalStock === 0;
 
-  // Wheat seeds (always visible)
   el('buy-wheat1-btn').disabled  = state.coins < CROPS.wheat.seedCost;
   el('buy-wheat10-btn').disabled = state.coins < CROPS.wheat.seedCost * 10;
   el('wheat-seed-count').textContent = `${state.wheatSeeds || 0} owned`;
 
-  // Corn seeds
   el('corn-shop-card').style.display    = cornUnlocked ? 'flex' : 'none';
   el('corn-unlock-msg').style.display   = 'none';
   el('corn-shop-actions').style.display = 'flex';
@@ -316,7 +317,6 @@ export function updateShopUI() {
   el('buy-corn5-btn').disabled = state.coins < CROPS.corn.seedCost * 5;
   el('corn-seed-count').textContent = `${state.cornSeeds || 0} owned`;
 
-  // Pumpkin seeds
   el('pumpkin-shop-card').style.display    = pumpkinUnlocked ? 'flex' : 'none';
   el('pumpkin-unlock-msg').style.display   = 'none';
   el('pumpkin-shop-actions').style.display = 'flex';
@@ -324,7 +324,6 @@ export function updateShopUI() {
   el('buy-pumpkin3-btn').disabled = state.coins < CROPS.pumpkin.seedCost * 3;
   el('pumpkin-seed-count').textContent = `${state.pumpkinSeeds || 0} owned`;
 
-  // Truffle seeds
   el('truffle-shop-card').style.display    = truffleUnlocked ? 'flex' : 'none';
   el('truffle-unlock-msg').style.display   = 'none';
   el('truffle-shop-actions').style.display = 'flex';
@@ -332,7 +331,6 @@ export function updateShopUI() {
   el('buy-truffle3-btn').disabled = state.coins < CROPS.truffle.seedCost * 3;
   el('truffle-seed-count').textContent = `${state.truffleSeeds || 0} owned`;
 
-  // Supplies
   el('supplies-section-title').style.display = suppliesUnlocked ? 'block' : 'none';
   el('water-shop-card').style.display        = suppliesUnlocked ? 'flex'  : 'none';
   el('fert-shop-card').style.display         = suppliesUnlocked ? 'flex'  : 'none';
@@ -353,7 +351,6 @@ export function updateShopUI() {
   el('buy-bigfert-btn').disabled = state.coins < bigFertCost() ||
     growingPlots.filter(p => !p.fertilized).length === 0;
 
-  // Gloves
   el('gloves-shop-card').style.display = wheatHarvests >= 20 ? 'flex' : 'none';
   const gd = state.glovesDurability || 0;
   el('buy-gloves-btn').disabled   = gd > 0 || state.coins < GLOVES_COST;
@@ -362,8 +359,6 @@ export function updateShopUI() {
   el('gloves-status').textContent = gd > 0 ? usesLabel : 'Not equipped';
   el('gloves-status').style.color = gd > 0 ? 'var(--accent2)' : 'var(--text3)';
 
-  // ── NPC AFFINITY-DRIVEN PRICE & DESC UPDATES ──────────
-  // Sell prices
   const wPrice  = wheatSellPrice();
   const cPrice  = cornSellPrice();
   const pkPrice = pumpkinSellPrice();
@@ -378,20 +373,17 @@ export function updateShopUI() {
   _elf('pumpkin-sell-price')&&(_elf('pumpkin-sell-price').textContent = `🪙${pkPrice}`);
   _elf('truffle-sell-price')&&(_elf('truffle-sell-price').textContent = `🪙${trPrice}`);
 
-  // Seed card sell-price hints
   _elf('wheat-seed-desc')   && (_elf('wheat-seed-desc').textContent   = `Grows in 2 min · Sells for ${wPrice}🪙`);
   _elf('corn-seed-desc')    && (_elf('corn-seed-desc').textContent    = `Grows in 8 min · Sells for ${cPrice}🪙`);
   _elf('pumpkin-seed-desc') && (_elf('pumpkin-seed-desc').textContent = `Grows in 15 min · Sells for ${pkPrice}🪙`);
   _elf('truffle-seed-desc') && (_elf('truffle-seed-desc').textContent = `Grows in 45 min · Sells for ${trPrice}🪙`);
 
-  // Water hose
   const hCost = hoseCost();
   const wPct  = waterSpeedupPct();
   _elf('hose-cost-tag') && (_elf('hose-cost-tag').textContent = hCost === 0 ? 'FREE!' : `🪙${hCost}`);
   _elf('hose-desc')     && (_elf('hose-desc').textContent     = `Waters all growing plots · ${wPct}% faster each`);
   _elf('water-desc')    && (_elf('water-desc').textContent    = `Apply to one growing plot · ${wPct}% faster grow`);
 
-  // Fertilizer
   const fYield  = fertYieldAmt();
   const bfCost  = bigFertCost();
   const bfYield = bigFertYieldAmt();
@@ -399,13 +391,11 @@ export function updateShopUI() {
   _elf('bigfert-cost-tag')  && (_elf('bigfert-cost-tag').textContent = bfCost === 0 ? 'FREE!' : `🪙${bfCost}`);
   _elf('bigfert-desc')      && (_elf('bigfert-desc').textContent  = `Fertilizes all growing plots · +${bfYield} yield each`);
 
-  // Gloves desc
   const gChance = glovesChancePct();
   const gMax    = glovesMaxUses();
   const gUsesStr = gMax === Infinity ? 'unlimited uses' : `${gMax} uses`;
   _elf('gloves-desc') && (_elf('gloves-desc').textContent = `${gChance}% seed recovery on harvest · ${gUsesStr}`);
 
-  // Sell rows
   el('sell-wheat-all-btn').disabled   = w  === 0;
   el('sell-wheat1-btn').disabled      = w  === 0;
   el('wheat-barn-count').textContent  = `${w} in barn`;
@@ -425,7 +415,6 @@ export function updateShopUI() {
   el('sell-truffle1-btn').disabled        = tr === 0;
   el('truffle-barn-count').textContent    = `${tr} in barn`;
 
-  // Barn
   el('barn-cap-display').textContent = `${barnUsed}/${cap}`;
   const nextLevel = (state.barnLevel || 0) + 1;
   if (nextLevel > BARN_UPGRADES.length) {
@@ -439,7 +428,6 @@ export function updateShopUI() {
     el('barn-upgrade-cost').textContent = `🪙${upg.cost} → ${upg.cap} cap`;
   }
 
-  // Expand farm section
   const rCost = expandCost('row');
   const cCost = expandCost('col');
   el('row-cost').textContent = `🪙 ${rCost}`;
@@ -449,7 +437,6 @@ export function updateShopUI() {
   el('row-desc').textContent = state.rows >= MAX_ROWS ? 'Max rows reached' : `${state.rows} → ${state.rows+1} rows`;
   el('col-desc').textContent = state.cols >= MAX_COLS ? 'Max cols reached' : `${state.cols} → ${state.cols+1} cols`;
 
-  // Max-farm banner replaces expand cards at 6×6
   const maxFarmBanner = el('max-farm-banner');
   const expandCards   = el('expand-grid-cards');
   if (maxGridReached) {
@@ -476,7 +463,6 @@ export function updateWeatherBanner() {
   const mins      = Math.ceil(remaining / 60000);
   const cur       = state.weather.current;
 
-  // For recurring events, show time until next trigger
   let timerText = mins > 0 ? `${mins}m left` : 'Changing...';
   if (cur === 'rain' && state.weather.lastRainAt) {
     const nextRain = Math.max(0, Math.ceil((5 * 60 * 1000 - (now - state.weather.lastRainAt)) / 1000));
@@ -541,16 +527,13 @@ export function renderTownTab() {
       const maxed      = npc.affinity >= 15;
       const lvl        = affinityLevel(id);
 
-      // Hearts based on level (0–5)
       const hearts = '♥'.repeat(lvl);
       const emptyH = '♡'.repeat(Math.max(0, 5 - lvl));
 
-      // Affinity progress within current level
       const affinityInLevel = npc.affinity % 3;
       const nextLevelAt     = lvl < 5 ? (lvl * 3) + 3 : 15;
       const progressPct     = lvl >= 5 ? 100 : Math.round((npc.affinity / nextLevelAt) * 100);
 
-      // Build the affinity detail panel (shown when expanded)
       const activeBonus = activeBonusText(id);
       const story       = currentStoryText(id);
 
@@ -558,7 +541,6 @@ export function renderTownTab() {
         const bLvl    = i + 1;
         const reached = lvl >= bLvl;
         const isCur   = lvl === bLvl;
-        // Hide future bonuses — keep them as a surprise
         const pipText = reached ? b : '???';
         return `<div class="affinity-bonus-pip ${reached ? 'reached' : ''} ${isCur ? 'current' : ''}">
           <span class="pip-level">Lv.${bLvl}</span>
@@ -572,7 +554,6 @@ export function renderTownTab() {
           <div class="affinity-bonus-list">${bonusPips}</div>
         </div>` : '';
 
-      // Request body
       let bodyHtml = '';
       if (req) {
         const pills = [];
@@ -630,7 +611,6 @@ export function renderTownTab() {
       list.appendChild(card);
     });
 
-  // Bind toggle handlers — use dynamic import to avoid circular static dep
   list.querySelectorAll('[data-toggle-npc]').forEach(header => {
     header.addEventListener('click', e => {
       if (e.target.closest('[data-deliver]')) return;
@@ -642,7 +622,6 @@ export function renderTownTab() {
   updateTownBadge();
 }
 
-/** Tick cooldown timers in-place without full re-render. */
 export function tickTownCooldowns() {
   document.querySelectorAll('.cooldown-msg[data-until]').forEach(span => {
     const until = parseInt(span.dataset.until);
@@ -746,11 +725,9 @@ export function updateMerchantUI() {
     const moon= el('merchant-moto');
     if (!sun || !moon) return;
 
-    // Show/hide icons based on who is active (even if modal is dismissed)
     sun.style.display  = (m.active === 'mochi') ? 'flex' : 'none';
     moon.style.display = (m.active === 'moto')  ? 'flex' : 'none';
 
-    // Active effect badge
     const effBadge = el('merchant-effect-badge');
     if (effBadge) {
       const eff = m.effect;
@@ -770,7 +747,6 @@ export function updateMerchantUI() {
       }
     }
 
-    // Moto outcome reveal modal
     const outModal = el('moto-outcome-modal');
     if (outModal) {
       if (m.motoOutcome) {
@@ -789,7 +765,6 @@ export function updateMerchantUI() {
   });
 }
 
-/** Called every second from the tick loop to update the effect countdown. */
 export function tickMerchantBadge() {
   const effBadge = el('merchant-effect-badge');
   if (!effBadge) return;
@@ -875,7 +850,6 @@ export function openMerchantModal(who) {
       }
     }
 
-    // Decline button text
     const declineBtn = el('merchant-decline-btn');
     if (declineBtn) {
       declineBtn.textContent = who === 'mochi'
@@ -886,7 +860,6 @@ export function openMerchantModal(who) {
     modal.dataset.who = who;
     modal.classList.add('open');
 
-    // Wire buy buttons
     itemsEl.querySelectorAll('[data-buy-mochi]').forEach(btn => {
       btn.addEventListener('click', () => {
         M.buyMochiItem(btn.dataset.buyMochi);

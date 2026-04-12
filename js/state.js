@@ -88,8 +88,6 @@ export const MAX_ROWS    = 6;
 export const MAX_COLS    = 6;
 
 // ── STATE ─────────────────────────────────────────────────
-// Single mutable object — mutated in-place by all modules.
-// Import by reference: `import { state } from './state.js'`
 
 export const state = {
   coins: 0,
@@ -112,17 +110,18 @@ export const state = {
     everBoughtWater: false, everBoughtFert: false,
   },
   begTaps: 0,
+  bodieLastReadTip: null,  // id of the last tip the player tapped/read
   npcs: {},
   unlockedNpcs: ['kimchi'],
   merchant: {
-    active: null,        // null | 'mochi' | 'moto'
-    arrivedAt: 0,        // when current merchant arrived
-    nextVisitAt: 0,      // when next visit can begin
-    nextMerchant: null,  // forced next merchant after decline/auto-dismiss
-    effect: null,        // active effect object
-    motoOutcome: null,   // revealed after Moto purchase
-    activeItemId: null,  // which Mochi item is offered this visit
-    activeRiddleId: null,// which Moto riddle is offered this visit
+    active: null,
+    arrivedAt: 0,
+    nextVisitAt: 0,
+    nextMerchant: null,
+    effect: null,
+    motoOutcome: null,
+    activeItemId: null,
+    activeRiddleId: null,
   },
 };
 
@@ -133,7 +132,6 @@ export const settings = {
 };
 
 // ── PERSISTENCE ───────────────────────────────────────────
-// Keys are identical to the original single-file version — no save-data loss.
 
 const STATE_KEY    = 'cozyfarm_state';
 const SETTINGS_KEY = 'cozyfarm_settings';
@@ -246,6 +244,13 @@ export function migrateState() {
   if (state.stats.everBoughtWater === undefined) state.stats.everBoughtWater = false;
   if (state.stats.everBoughtFert  === undefined) state.stats.everBoughtFert  = false;
   if (state.begTaps === undefined) state.begTaps = 0;
+  // Bodie guide tip — null means "not yet seen any tip"
+  // Migrate Bodie state (rename old field if present)
+  if (state.bodieSeenTip !== undefined) {
+    state.bodieLastReadTip = state.bodieLastReadTip ?? state.bodieSeenTip;
+    delete state.bodieSeenTip;
+  }
+  if (state.bodieLastReadTip === undefined) state.bodieLastReadTip = null;
   // Migrate old plot format
   state.plots.forEach(p => {
     if (!p.crop) p.crop = 'wheat';
@@ -263,45 +268,29 @@ export function migrateState() {
 }
 
 // ── GROW-DURATION HELPERS ─────────────────────────────────
-// Single source of truth for grow-time and elapsed-time calculations.
-// Called by the tick engine, the progress bar renderer, and the toast.
-//
-// opts (all optional, injected by callers that import npcs.js):
-//   truffleGrowMult  : number  – getTruffleGrowMult()
-//   cornGrowMult     : number  – getCornGrowMult()
-//   pumpkinWeatherMult: number – getPumpkinWeatherMult()
-//   kalbiL5          : bool   – affinityLevel('kalbi') >= 5
-//   waterSpeedup     : number – getWaterSpeedup() (fraction; lower = faster)
-//   photosynthActive : bool   – isPhotosynthActive()
-//   timerFrozen      : bool   – isTimerFrozen()
-//   weatherMultiplier: number – currentWeatherMultiplier() (caller passes this)
 
 export function computeGrowMs(cropKey, weatherMult, isBadWeather, opts = {}) {
   const crop = CROPS[cropKey] || CROPS.wheat;
   let growMs = crop.growMs;
 
-  // Crop-specific NPC bonuses
   if (cropKey === 'truffle' && opts.truffleGrowMult != null) growMs *= opts.truffleGrowMult;
   if (cropKey === 'corn'    && opts.cornGrowMult    != null) growMs *= opts.cornGrowMult;
   if (cropKey === 'pumpkin' && isBadWeather && opts.pumpkinWeatherMult != null)
     growMs *= opts.pumpkinWeatherMult;
   if (cropKey === 'wheat'   && opts.kalbiL5)                growMs *= 0.50;
 
-  // 30% floor before weather so NPC bonuses can't collapse below it
   growMs = Math.max(crop.growMs * 0.30, growMs);
 
-  // Weather (Photosynthesis blocks overcast slowdown)
   const effWeather = (opts.photosynthActive && weatherMult > 1.0) ? 1.0 : weatherMult;
   growMs *= effWeather;
 
-  // Absolute minimum 10 s
   growMs = Math.max(10000, growMs);
 
   return growMs;
 }
 
 export function computeEffectiveElapsed(plot, waterSpeedup) {
-  const FALLBACK = 0.65; // WATER_SPEEDUP constant
+  const FALLBACK = 0.65;
   const speedup  = waterSpeedup != null ? waterSpeedup : FALLBACK;
   const now      = Date.now();
   let elapsed    = now - (plot.plantedAt || now);
