@@ -31,19 +31,23 @@
   <!-- ── FARM TAB ── -->
   <div id="tab-farm" class="tab-panel active">
 
-    <!-- Weather banner (now compact, with Bodie on the left) -->
-    <div class="weather-banner" id="weather-banner">
-      <!-- Bodie guide button -->
+    <!-- Bodie + Weather row -->
+    <div class="bodie-row">
+      <!-- Bodie zone: left 1/3 -->
       <button class="bodie-btn" id="bodie-btn" title="Bodie says...">
         <span class="bodie-paw">🐾</span>
+        <span class="bodie-label" id="bodie-label"></span>
       </button>
 
-      <div class="weather-icon" id="weather-icon">☀️</div>
-      <div class="weather-info">
-        <div class="weather-name" id="weather-name">Clear</div>
-        <div class="weather-desc" id="weather-desc">No special effects</div>
+      <!-- Weather card: right 2/3 -->
+      <div class="weather-banner" id="weather-banner">
+        <div class="weather-icon" id="weather-icon">☀️</div>
+        <div class="weather-info">
+          <div class="weather-name" id="weather-name">Clear</div>
+          <div class="weather-desc" id="weather-desc">No special effects</div>
+        </div>
+        <div class="weather-timer" id="weather-timer">—</div>
       </div>
-      <div class="weather-timer" id="weather-timer">—</div>
     </div>
 
     <!-- Crop selector toolbar -->
