@@ -38,10 +38,10 @@ import {
   updateWeatherBanner, updateTownVisibility, updateTownBadge,
   renderTownTab, tickTownCooldowns, renderLogTab,
   updateMerchantUI, openMerchantModal, tickMerchantBadge,
-  updateBodieUI,
+  updateBodieUI, renderBodieBook,
 } from './ui.js';
 
-import { getActiveTip, markBodieRead, isBodieUnread } from './bodie.js';
+import { getActiveTip, markBodieRead, isBodieUnread, refreshBodieQueue } from './bodie.js';
 
 // ── INTERACTION STATE ─────────────────────────────────────
 let selectedCrop = 'wheat';
@@ -71,11 +71,29 @@ function applyWaterSpeedup(plot) {
 
 // ── BODIE CLICK ───────────────────────────────────────────
 function clickBodie() {
+  // Refresh queue so any newly-satisfied tips are enqueued first
+  refreshBodieQueue();
+
   const tip = getActiveTip();
   if (!tip) return;
+
+  // Show the current tip text
   toast(`🐾 ${tip.text}`);
+
+  // Dequeue, mark seen, and log to the collection
   markBodieRead();
+
+  // Refresh queue again after dismissal to detect if more tips are pending
+  refreshBodieQueue();
+
+  // Update button state (pulsing or dimmed)
   updateBodieUI();
+
+  // Refresh the Book of Barns if the settings tab is currently open
+  const settingsPanel = el('tab-settings');
+  if (settingsPanel && settingsPanel.classList.contains('active')) {
+    renderBodieBook();
+  }
 }
 
 // ── PLOT INTERACTIONS ─────────────────────────────────────
@@ -596,7 +614,7 @@ function onWeatherStart(id) {
   } else {
     toast('🌤️ Skies have cleared up.');
   }
-  // Weather change might shift Bodie tip (especially thunder/flood/sunny/overcast)
+  // Weather change triggers Bodie queue refresh
   updateBodieUI();
 }
 
@@ -682,7 +700,6 @@ function doFloodEnd() {
   state.weather.floodedRow = -1;
   toast('🌊 Flood receded! Row is usable again.');
   renderGrid();
-  // Flood ended — tip may revert; refresh Bodie
   updateBodieUI();
 }
 
@@ -723,7 +740,9 @@ function tick() {
   tickMerchants();
   tickMerchantBadge();
   tickTownCooldowns();
-  // Refresh Bodie once per second to catch tip transitions without player action
+
+  // Refresh Bodie queue once per second to catch newly-satisfied tips
+  refreshBodieQueue();
   updateBodieUI();
 
   const weatherMult = currentWeatherMultiplier();
@@ -787,6 +806,9 @@ function doReset() {
       everBoughtWater: false, everBoughtFert: false,
     },
     begTaps: 0,
+    bodieSeenTips: [],
+    bodieQueue: [],
+    bodieCollectedTips: [],
     bodieLastReadTip: null,
     npcs: {},
     unlockedNpcs: ['kimchi'],
@@ -999,6 +1021,9 @@ function init() {
   updateTownBadge();
   updateWeatherBanner();
   updateMerchantUI();
+
+  // Prime the Bodie queue on load before first render
+  refreshBodieQueue();
   updateBodieUI();
   checkAchievements();
 

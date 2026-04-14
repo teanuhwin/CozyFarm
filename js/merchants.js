@@ -288,6 +288,8 @@ export function buyMochiItem(itemId) {
         shifted++;
       }
     });
+    // Set flag so Bodie's sundial tip can detect this purchase
+    m.lastSundialAt = Date.now();
     toast(`⏳ Sundial Dust! ${shifted} crop${shifted !== 1 ? 's' : ''} aged by 10 minutes.`);
   } else {
     m.effect = {

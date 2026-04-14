@@ -63,7 +63,6 @@ function initToastDismiss() {
     if (badge) badge.style.visibility = '';
   });
 }
-// Call after DOM is ready — we defer via requestAnimationFrame
 if (typeof document !== 'undefined') {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initToastDismiss);
@@ -83,9 +82,10 @@ export function switchTab(name, btn) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   el('tab-' + name).classList.add('active');
   btn.classList.add('active');
-  if (name === 'shop') updateShopUI();
-  if (name === 'log')  renderLogTab();
-  if (name === 'town') renderTownTab();
+  if (name === 'shop')     updateShopUI();
+  if (name === 'log')      renderLogTab();
+  if (name === 'town')     renderTownTab();
+  if (name === 'settings') renderBodieBook();
 }
 
 // ── BODIE UI ──────────────────────────────────────────────
@@ -97,6 +97,62 @@ export function updateBodieUI() {
     btn.classList.toggle('bodie-unread', unread);
     btn.classList.toggle('bodie-read',  !unread);
   });
+}
+
+// ── BOOK OF BARNS ─────────────────────────────────────────
+export function renderBodieBook() {
+  const list = el('bodie-book-list');
+  if (!list) return;
+
+  import('./bodie.js').then(({ getCollectedTips }) => {
+    const entries = getCollectedTips(); // newest first
+    list.innerHTML = '';
+
+    if (entries.length === 0) {
+      list.innerHTML = '<div style="padding:14px 16px;font-size:12px;color:var(--text3);font-style:italic;text-align:center">No entries yet. Tap 🐾 Bodie to collect tips!</div>';
+      return;
+    }
+
+    // Count label
+    const countRow = document.createElement('div');
+    countRow.style.cssText = 'padding:10px 16px 6px;font-size:11px;color:var(--text3);font-weight:700;letter-spacing:0.05em;text-transform:uppercase;border-bottom:1px solid var(--border)';
+    countRow.textContent = `${entries.length} entr${entries.length === 1 ? 'y' : 'ies'} collected`;
+    list.appendChild(countRow);
+
+    entries.forEach((entry, idx) => {
+      const row = document.createElement('div');
+      const isLast = idx === entries.length - 1;
+      row.style.cssText = `display:flex;align-items:flex-start;gap:12px;padding:12px 16px;${isLast ? '' : 'border-bottom:1px solid var(--border)'}`;
+
+      const iconEl = document.createElement('div');
+      iconEl.style.cssText = 'font-size:18px;flex-shrink:0;margin-top:1px;line-height:1';
+      iconEl.textContent = entry.icon || '🐾';
+
+      const body = document.createElement('div');
+      body.style.cssText = 'flex:1;min-width:0';
+
+      const text = document.createElement('div');
+      text.style.cssText = 'font-size:12px;color:var(--text);line-height:1.5';
+      text.textContent = entry.text;
+
+      const meta = document.createElement('div');
+      meta.style.cssText = 'font-size:10px;color:var(--text3);margin-top:3px;font-family:"Silkscreen",monospace';
+      meta.textContent = formatEntryDate(entry.timestamp);
+
+      body.appendChild(text);
+      body.appendChild(meta);
+      row.appendChild(iconEl);
+      row.appendChild(body);
+      list.appendChild(row);
+    });
+  });
+}
+
+function formatEntryDate(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 // ── FARM GRID ─────────────────────────────────────────────
@@ -238,26 +294,22 @@ export function updateFarmToolbar(selectedCrop, selectedTool) {
 
   const plantMode = selectedTool === 'plant';
 
-  // Wheat always visible
   el('crop-btn-wheat').style.display = '';
   el('crop-btn-wheat').classList.toggle('selected', plantMode && selectedCrop === 'wheat');
   el('toolbar-wheat-seeds').textContent = `×${state.wheatSeeds || 0}`;
 
-  // Corn — hide entirely until unlocked
   el('crop-btn-corn').style.display = cornUnlocked ? '' : 'none';
   if (cornUnlocked) {
     el('crop-btn-corn').classList.toggle('selected', plantMode && selectedCrop === 'corn');
     el('toolbar-corn-seeds').textContent = `×${state.cornSeeds || 0}`;
   }
 
-  // Pumpkin — hide until unlocked
   el('crop-btn-pumpkin').style.display = pumpkinUnlocked ? '' : 'none';
   if (pumpkinUnlocked) {
     el('crop-btn-pumpkin').classList.toggle('selected', plantMode && selectedCrop === 'pumpkin');
     el('toolbar-pumpkin-seeds').textContent = `×${state.pumpkinSeeds || 0}`;
   }
 
-  // Truffle — hide until unlocked
   el('crop-btn-truffle').style.display = truffleUnlocked ? '' : 'none';
   if (truffleUnlocked) {
     el('crop-btn-truffle').classList.toggle('selected', plantMode && selectedCrop === 'truffle');
@@ -335,7 +387,6 @@ export function updateShopUI() {
   const maxGridReached  = maxRowsReached && maxColsReached;
   const wheatHarvests   = state.stats.wheatHarvests || 0;
 
-  // Supplies visibility: use lifetime coin thresholds
   const waterUnlocked = lifetime >= WATER_UNLOCK_COINS || state.stats.everBoughtWater || (state.water || 0) > 0;
   const fertUnlocked  = lifetime >= FERT_UNLOCK_COINS  || state.stats.everBoughtFert  || (state.fertilizer || 0) > 0;
   const suppliesUnlocked = waterUnlocked || fertUnlocked;
@@ -378,7 +429,6 @@ export function updateShopUI() {
   el('buy-water5-btn').disabled = state.coins < WATER_COST * 5;
   el('water-count').textContent = `${state.water || 0} owned`;
 
-  // Water Hose: visible only when max rows reached
   el('hose-shop-card').style.display = maxRowsReached ? 'flex' : 'none';
   el('buy-hose-btn').disabled = state.coins < hoseCost() ||
     growingPlots.filter(p => !p.watered).length === 0;
@@ -387,12 +437,10 @@ export function updateShopUI() {
   el('buy-fert5-btn').disabled = state.coins < FERT_COST * 5;
   el('fert-count').textContent = `${state.fertilizer || 0} owned`;
 
-  // Big Fertilizer: visible only when max cols reached
   el('bigfert-shop-card').style.display = maxColsReached ? 'flex' : 'none';
   el('buy-bigfert-btn').disabled = state.coins < bigFertCost() ||
     growingPlots.filter(p => !p.fertilized).length === 0;
 
-  // Gloves: visible after 20 wheat harvests
   el('gloves-shop-card').style.display = wheatHarvests >= 20 ? 'flex' : 'none';
   const gd = state.glovesDurability || 0;
   el('buy-gloves-btn').disabled   = gd > 0 || state.coins < GLOVES_COST;

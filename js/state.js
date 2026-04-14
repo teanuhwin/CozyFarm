@@ -114,6 +114,11 @@ export const state = {
     everBoughtWater: false, everBoughtFert: false,
   },
   begTaps: 0,
+  // Bodie queue system
+  bodieSeenTips: [],       // array of string keys for permanently-seen tips
+  bodieQueue: [],          // ordered queue of tip keys pending display
+  bodieCollectedTips: [],  // full log of {key,id,icon,text,timestamp} for Book of Barns
+  // Legacy field kept for migration compatibility
   bodieLastReadTip: null,
   npcs: {},
   unlockedNpcs: ['kimchi'],
@@ -126,6 +131,7 @@ export const state = {
     motoOutcome: null,
     activeItemId: null,
     activeRiddleId: null,
+    lastSundialAt: null,
   },
 };
 
@@ -246,11 +252,22 @@ export function migrateState() {
   if (state.stats.everBoughtWater === undefined) state.stats.everBoughtWater = false;
   if (state.stats.everBoughtFert  === undefined) state.stats.everBoughtFert  = false;
   if (state.begTaps === undefined) state.begTaps = 0;
-  if (state.bodieSeenTip !== undefined) {
-    state.bodieLastReadTip = state.bodieLastReadTip ?? state.bodieSeenTip;
-    delete state.bodieSeenTip;
+
+  // Migrate legacy Bodie fields to new queue system
+  if (!Array.isArray(state.bodieSeenTips)) state.bodieSeenTips = [];
+  if (!Array.isArray(state.bodieQueue))    state.bodieQueue    = [];
+  if (!Array.isArray(state.bodieCollectedTips)) state.bodieCollectedTips = [];
+
+  // If a player had the old bodieLastReadTip / bodieSeenTip, seed the seen list
+  // so the tip they already read doesn't fire again as "new"
+  const legacyRead = state.bodieLastReadTip || state.bodieSeenTip;
+  if (legacyRead && !state.bodieSeenTips.includes(legacyRead)) {
+    state.bodieSeenTips.push(legacyRead);
   }
-  if (state.bodieLastReadTip === undefined) state.bodieLastReadTip = null;
+  // Clean up legacy fields
+  delete state.bodieSeenTip;
+  // Keep bodieLastReadTip for now (it's harmless) but don't rely on it
+
   state.plots.forEach(p => {
     if (!p.crop) p.crop = 'wheat';
     if (p.watered         === undefined) p.watered         = false;
@@ -263,6 +280,7 @@ export function migrateState() {
   if (state.merchant.motoOutcome    === undefined) state.merchant.motoOutcome    = null;
   if (state.merchant.activeItemId   === undefined) state.merchant.activeItemId   = null;
   if (state.merchant.activeRiddleId === undefined) state.merchant.activeRiddleId = null;
+  if (state.merchant.lastSundialAt  === undefined) state.merchant.lastSundialAt  = null;
 }
 
 // ── GROW-DURATION HELPERS ─────────────────────────────────
