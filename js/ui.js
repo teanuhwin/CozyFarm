@@ -50,6 +50,15 @@ export function toast(msg) {
   }, 3000);
 }
 
+export function dismissToast() {
+  const t = el('toast');
+  if (!t) return;
+  clearTimeout(toastTimer);
+  t.classList.remove('show');
+  const badge = el('grid-size-badge');
+  if (badge) badge.style.visibility = '';
+}
+
 // Wire up tap-to-dismiss on toast (done once at module load)
 function initToastDismiss() {
   const t = el('toast');
@@ -90,16 +99,30 @@ export function switchTab(name, btn) {
 
 // ── BODIE UI ──────────────────────────────────────────────
 export function updateBodieUI() {
-  import('./bodie.js').then(({ isBodieUnread }) => {
-    const btn = el('bodie-btn');
+  import('./bodie.js').then(({ isBodieUnread, getBodieQueueLength }) => {
+    const btn   = el('bodie-btn');
+    const label = el('bodie-label');
     if (!btn) return;
     const unread = isBodieUnread();
     btn.classList.toggle('bodie-unread', unread);
     btn.classList.toggle('bodie-read',  !unread);
+    if (label) {
+      const count = getBodieQueueLength ? getBodieQueueLength() : 0;
+      if (unread && count > 1) {
+        label.textContent = `${count} tips`;
+        label.classList.add('visible');
+      } else {
+        label.textContent = '';
+        label.classList.remove('visible');
+      }
+    }
   });
 }
 
 // ── BOOK OF BARNS ─────────────────────────────────────────
+const BOOK_PREVIEW_COUNT = 3;
+let bodieBookExpanded = false;
+
 export function renderBodieBook() {
   const list = el('bodie-book-list');
   if (!list) return;
@@ -110,18 +133,21 @@ export function renderBodieBook() {
 
     if (entries.length === 0) {
       list.innerHTML = '<div style="padding:14px 16px;font-size:12px;color:var(--text3);font-style:italic;text-align:center">No entries yet. Tap 🐾 Bodie to collect tips!</div>';
+      bodieBookExpanded = false;
       return;
     }
 
-    // Count label
+    // Count header
     const countRow = document.createElement('div');
     countRow.style.cssText = 'padding:10px 16px 6px;font-size:11px;color:var(--text3);font-weight:700;letter-spacing:0.05em;text-transform:uppercase;border-bottom:1px solid var(--border)';
     countRow.textContent = `${entries.length} entr${entries.length === 1 ? 'y' : 'ies'} collected`;
     list.appendChild(countRow);
 
-    entries.forEach((entry, idx) => {
+    const visible = bodieBookExpanded ? entries : entries.slice(0, BOOK_PREVIEW_COUNT);
+
+    visible.forEach((entry, idx) => {
+      const isLast = idx === visible.length - 1 && (bodieBookExpanded || entries.length <= BOOK_PREVIEW_COUNT);
       const row = document.createElement('div');
-      const isLast = idx === entries.length - 1;
       row.style.cssText = `display:flex;align-items:flex-start;gap:12px;padding:12px 16px;${isLast ? '' : 'border-bottom:1px solid var(--border)'}`;
 
       const iconEl = document.createElement('div');
@@ -136,7 +162,7 @@ export function renderBodieBook() {
       text.textContent = entry.text;
 
       const meta = document.createElement('div');
-      meta.style.cssText = 'font-size:10px;color:var(--text3);margin-top:3px;font-family:"Silkscreen",monospace';
+      meta.style.cssText = 'font-size:10px;color:var(--text3);margin-top:3px;font-family:"Silkscreen",monospace;font-weight:400';
       meta.textContent = formatEntryDate(entry.timestamp);
 
       body.appendChild(text);
@@ -145,6 +171,24 @@ export function renderBodieBook() {
       row.appendChild(body);
       list.appendChild(row);
     });
+
+    // Show more / show less button
+    if (entries.length > BOOK_PREVIEW_COUNT) {
+      const toggleRow = document.createElement('div');
+      toggleRow.style.cssText = 'border-top:1px solid var(--border);padding:10px 16px;text-align:center';
+      const toggleBtn = document.createElement('button');
+      toggleBtn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:12px;font-weight:700;color:var(--accent2);font-family:"Nunito",sans-serif;padding:0';
+      const hidden = entries.length - BOOK_PREVIEW_COUNT;
+      toggleBtn.textContent = bodieBookExpanded
+        ? 'Show less ▲'
+        : `Show ${hidden} more ▼`;
+      toggleBtn.addEventListener('click', () => {
+        bodieBookExpanded = !bodieBookExpanded;
+        renderBodieBook();
+      });
+      toggleRow.appendChild(toggleBtn);
+      list.appendChild(toggleRow);
+    }
   });
 }
 
@@ -799,7 +843,7 @@ function renderWeatherHistory() {
           <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:3px;transition:width 0.5s"></div>
         </div>
       </div>
-      <div style="font-family:'Silkscreen',monospace;font-size:11px;color:var(--text2);text-align:right">
+      <div style="font-family:'Silkscreen',monospace;font-weight:400;font-size:11px;color:var(--text2);text-align:right">
         <div>${count}×</div><div style="color:var(--text3)">${pct}%</div>
       </div>
     `;

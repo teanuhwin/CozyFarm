@@ -363,3 +363,9 @@ export function getCollectedTips() {
   if (!Array.isArray(state.bodieCollectedTips)) return [];
   return [...state.bodieCollectedTips].reverse();
 }
+
+/** Returns the number of tips currently pending in the queue. */
+export function getBodieQueueLength() {
+  refreshBodieQueue();
+  return getQueue().length;
+}

@@ -32,7 +32,7 @@ import {
 } from './merchants.js';
 
 import {
-  el, toast, applyTheme, switchTab,
+  el, toast, dismissToast, applyTheme, switchTab,
   renderGrid, renderPlot, updateHeader, updateFarmToolbar,
   updateHint, updateBegZone, updateShopUI,
   updateWeatherBanner, updateTownVisibility, updateTownBadge,
@@ -71,22 +71,25 @@ function applyWaterSpeedup(plot) {
 
 // ── BODIE CLICK ───────────────────────────────────────────
 function clickBodie() {
+  // Dismiss any currently visible toast immediately so the button stays reachable
+  dismissToast();
+
   // Refresh queue so any newly-satisfied tips are enqueued first
   refreshBodieQueue();
 
   const tip = getActiveTip();
   if (!tip) return;
 
-  // Show the current tip text
+  // Show this tip
   toast(`🐾 ${tip.text}`);
 
   // Dequeue, mark seen, and log to the collection
   markBodieRead();
 
-  // Refresh queue again after dismissal to detect if more tips are pending
+  // Refresh queue again so button state reflects remaining tips
   refreshBodieQueue();
 
-  // Update button state (pulsing or dimmed)
+  // Update button (pulse count label)
   updateBodieUI();
 
   // Refresh the Book of Barns if the settings tab is currently open
