@@ -104,7 +104,7 @@ header {
   border-radius: 20px;
   padding: 3px 9px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 400;
   display: flex;
   align-items: center;
   gap: 3px;
@@ -140,7 +140,7 @@ header {
   cursor: pointer;
   font-family: 'Nunito', sans-serif;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   transition: color 0.2s, background 0.2s;
   padding-bottom: env(safe-area-inset-bottom, 0px);
   position: relative;
@@ -256,7 +256,7 @@ main {
   font-size: clamp(7px, 1.8vw, 12px);
   color: var(--text3);
   font-family: 'Nunito', sans-serif;
-  font-weight: 700;
+  font-weight: 400;
   margin-top: 1px;
 }
 
@@ -413,7 +413,7 @@ main {
 }
 .settings-row:last-child { border-bottom: none; }
 .settings-label { flex: 1; }
-.settings-label .s-title { font-weight: 700; font-size: 14px; }
+.settings-label .s-title { font-weight: 400; font-size: 14px; }
 .settings-label .s-desc  { font-size: 12px; color: var(--text2); margin-top: 2px; }
 
 .toggle { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
@@ -456,7 +456,7 @@ main {
   border-radius: 14px;
   padding: 8px 14px; /* Slightly increase padding for readability */
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 400;
   white-space: normal; /* CHANGE THIS TO: white-space: normal; */
   /*overflow: hidden; Remove this and next
   text-overflow: ellipsis; */
@@ -707,8 +707,8 @@ main {
   flex-direction: column;
   gap: 3px;
 }
-.stat-card-label { font-size: 11px; color: var(--text2); font-weight: 700; }
-.stat-card-val   { font-size: 20px; font-weight: 800; font-family: 'Silkscreen', monospace; color: var(--accent2); }
+.stat-card-label { font-size: 11px; color: var(--text2); font-weight: 400; }
+.stat-card-val   { font-size: 20px; font-weight: 400; font-family: 'Silkscreen', monospace; color: var(--accent2); }
 .stat-card-icon  { font-size: 16px; }
 
 /* ── TOWN TAB ── */
@@ -846,7 +846,7 @@ main {
   transition: opacity 0.2s;
 }
 .affinity-bonus-pip.reached { color: var(--text2); opacity: 1; }
-.affinity-bonus-pip.current { color: var(--accent2); font-weight: 700; opacity: 1; }
+.affinity-bonus-pip.current { color: var(--accent2); font-weight: 400; opacity: 1; }
 .pip-level {
   font-family: 'Silkscreen', monospace;
   font-size: 9px;
@@ -876,7 +876,7 @@ main {
   font-style: normal !important;
   color: var(--accent2) !important;
   text-align: center;
-  font-weight: 700;
+  font-weight: 400;
   font-size: 12px !important;
 }
 
@@ -984,7 +984,7 @@ main {
   border-radius: 10px;
   padding: 3px 10px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   text-align: center;
   color: var(--accent2);
   white-space: nowrap;
