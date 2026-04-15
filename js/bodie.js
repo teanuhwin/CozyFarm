@@ -58,7 +58,7 @@ export const BODIE_TIPS = [
     icon: '🌟',
     merchant: true,
     check: s => s.merchant?.effect?.id === 'helios',
-    text: "Hi! Im Bodie. Mochi sold you the Helios Serum! 🌟 All sell prices are up 20% for the next 2 hours. Sell big!",
+    text: "Hi! Im Bodie. Mochi sold you the Helios Serum! 🌟 All sell prices are up 50% for the next 2 hours. Sell big!",
   },
   {
     id: 'merchant_sundial',
@@ -68,21 +68,21 @@ export const BODIE_TIPS = [
       const t = s.merchant?.lastSundialAt;
       return !!t && Date.now() - t < 10000;
     },
-    text: "Hi! Im Bodie. Mochi's Sundial Dust! ⏳ All your crops just aged by 10 minutes. That's cheating. Nice.",
+    text: "Hi! Im Bodie. Mochi's Sundial Dust! ⏳ All your crops just aged by 15 minutes. That's cheating. Nice.",
   },
   {
     id: 'merchant_lightleaf',
     icon: '🫙',
     merchant: true,
     check: s => s.merchant?.effect?.id === 'lightleaf',
-    text: "Hi! Im Bodie. Light-Leaf Oil is active! 🫙 Your crops take up zero barn space for the next hour. Harvest away!",
+    text: "Hi! Im Bodie. Light-Leaf Oil is active! 🫙 Your crops take up zero barn space for the next half hour. Harvest away!",
   },
   {
     id: 'merchant_photosynth',
     icon: '🌿',
     merchant: true,
     check: s => s.merchant?.effect?.id === 'photosynth',
-    text: "Hi! Im Bodie. Photosynthesis is active! 🌿 Flood and Overcast can't touch your farm for an hour. Weather? Pfft.",
+    text: "Hi! Im Bodie. Photosynthesis is active! 🌿 That's 3 more crops per harvest for 30 minutes!",
   },
 
   // ── Moto outcomes (re-fire each visit) ───────────────────
@@ -105,14 +105,14 @@ export const BODIE_TIPS = [
     icon: '💰',
     merchant: true,
     check: s => s.merchant?.effect?.id === 'triple_sell',
-    text: "Hi! Im Bodie. TRIPLE SELL is active! 💰 Your next 10 crops sell for 3× value. Don't waste it on wheat.",
+    text: "Hi! Im Bodie. TRIPLE SELL is active! 💰 Your next 30 crops sell for 3× value. Don't waste it on wheat.",
   },
   {
     id: 'merchant_tax',
     icon: '💸',
     merchant: true,
     check: s => s.merchant?.motoOutcome?.riddleId === 'wealth_bowl' && s.merchant?.motoOutcome?.isGood === false,
-    text: "Hi! Im Bodie. Moto took your coins. 💸 The Tax Man cometh. He really did say \"accidentally.\" I don't believe him.",
+    text: "Hi! Im Bodie. Moto took your coins. 💸 The Tax Man cometh. Did he say \"accidentally?\" I don't believe him.",
   },
   {
     id: 'merchant_miracle_harvest',
@@ -126,21 +126,21 @@ export const BODIE_TIPS = [
     icon: '🥶',
     merchant: true,
     check: s => s.merchant?.effect?.id === 'barren',
-    text: "Hi! Im Bodie. Barren Earth is active. 🥶 Your gloves won't return any seeds for an hour. Moto is laughing somewhere.",
+    text: "Hi! Im Bodie. Barren Earth is active. 🥶 All those rows are gone... Moto is laughing somewhere.",
   },
   {
     id: 'merchant_void_barn',
     icon: '🏚️',
     merchant: true,
     check: s => s.merchant?.effect?.id === 'void_barn',
-    text: "Hi! Im Bodie. Void Barn is active! 🏚️ Unlimited storage for 2 hours. Harvest literally everything.",
+    text: "Hi! Im Bodie. Void Barn is active! 🏚️ Unlimited storage for 1 hour. Harvest literally everything.",
   },
   {
     id: 'merchant_sticky',
     icon: '🐌',
     merchant: true,
     check: s => s.merchant?.effect?.id === 'sticky',
-    text: "Hi! Im Bodie. Sticky Fingers is active. 🐌 One harvest every 10 seconds. Moto apologizes. He does not apologize.",
+    text: "Hi! Im Bodie. Sticky Fingers is active. 🐌 One harvest every 5 seconds. I apologize. Moto does not apologize.",
   },
 
   // ── Beg zone ─────────────────────────────────────────────
@@ -177,7 +177,7 @@ export const BODIE_TIPS = [
     id: 'merchants_unlocked',
     icon: '☀️',
     check: s => (s.lifetimeCoins || 0) >= MERCHANT_UNLOCK_COINS,
-    text: 'Hi! Im Bodie. Whoa — roaming merchants Mochi and Moto will start visiting your farm! Keep an eye out for ☀️ and 🌙 on the farm.',
+    text: 'Hi! Im Bodie. Whoa — roaming merchants Mochi and Moto will start visiting! Keep an eye out for ☀️ and 🌙 on the farm.',
   },
 
   // ── Crop unlocks ─────────────────────────────────────────
@@ -185,19 +185,19 @@ export const BODIE_TIPS = [
     id: 'truffle_unlocked',
     icon: '🍄',
     check: s => (s.lifetimeCoins || 0) >= CROPS.truffle.unlockCoins,
-    text: "Hi! Im Bodie. TRUFFLES! 🍄 You've hit the big leagues. Check the Shop — they're slow but worth every coin.",
+    text: "Hi! Im Bodie. TRUFFLES! 🍄 You've hit the big leagues. Check the Shop — they're the slowest but sell for lots of coins.",
   },
   {
     id: 'pumpkin_unlocked',
     icon: '🎃',
     check: s => (s.lifetimeCoins || 0) >= CROPS.pumpkin.unlockCoins,
-    text: 'Hi! Im Bodie. Pumpkins unlocked! 🎃 They take 15 minutes but sell for a lot more. Worth the wait.',
+    text: 'Hi! Im Bodie. Pumpkins unlocked! 🎃 They take 15 minutes but sell for even more. Worth the wait.',
   },
   {
     id: 'corn_unlocked',
     icon: '🌽',
     check: s => (s.lifetimeCoins || 0) >= CROPS.corn.unlockCoins,
-    text: 'Hi! Im Bodie. Corn is available! 🌽 Check the Shop — it grows slower than wheat but earns a lot more per harvest.',
+    text: 'Hi! Im Bodie. Corn is available! 🌽 Check the Shop — it grows slower than wheat but earns more per harvest.',
   },
 
   // ── Supply unlocks ────────────────────────────────────────
@@ -247,7 +247,7 @@ export const BODIE_TIPS = [
     id: 'first_sell',
     icon: '🪙',
     check: s => (s.stats?.sellActions || 0) >= 1,
-    text: "Hi! Im Bodie. Good selling! Keep farming and you'll unlock more crops and supplies as you earn more coins.",
+    text: "Hi! Im Bodie. Nice sale! Keep farming and you'll unlock more crops and supplies as you earn more coins.",
   },
   {
     id: 'first_harvest',
