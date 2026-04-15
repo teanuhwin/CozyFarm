@@ -56,6 +56,18 @@ body {
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
+
+  /* 1. Prevents double-tap zoom on iOS and Android */
+  touch-action: manipulation;
+
+  /* 2. Prevents accidental text selection on Android double-tap */
+  -webkit-user-select: none; /* Safari/Chrome/Android */
+  -moz-user-select: none;    /* Firefox */
+  -ms-user-select: none;     /* IE10+ */
+  user-select: none;         /* Standard */
+
+  /* 3. Removes the blue/gray tap highlight box on mobile */
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* ── HEADER ── */
