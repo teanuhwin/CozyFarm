@@ -41,11 +41,15 @@ export function toast(msg) {
   const t = el('toast');
   const badge = el('grid-size-badge');
   t.textContent = msg;
+  t.style.pointerEvents = 'auto';
+  t.style.cursor = 'pointer';
   t.classList.add('show');
   if (badge) badge.style.visibility = 'hidden';
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
     t.classList.remove('show');
+    t.style.pointerEvents = 'none';
+    t.style.cursor = 'default';
     if (badge) badge.style.visibility = '';
   }, 3000);
 }
@@ -55,6 +59,8 @@ export function dismissToast() {
   if (!t) return;
   clearTimeout(toastTimer);
   t.classList.remove('show');
+  t.style.pointerEvents = 'none';
+  t.style.cursor = 'default';
   const badge = el('grid-size-badge');
   if (badge) badge.style.visibility = '';
 }
@@ -63,11 +69,13 @@ export function dismissToast() {
 function initToastDismiss() {
   const t = el('toast');
   if (!t) return;
-  t.style.pointerEvents = 'auto';
-  t.style.cursor = 'pointer';
+  // pointer-events start as 'none'; only enabled when toast is shown
+  t.style.pointerEvents = 'none';
   t.addEventListener('click', () => {
     clearTimeout(toastTimer);
     t.classList.remove('show');
+    t.style.pointerEvents = 'none';
+    t.style.cursor = 'default';
     const badge = el('grid-size-badge');
     if (badge) badge.style.visibility = '';
   });
