@@ -1,7 +1,7 @@
 // ── MERCHANT MODULE ───────────────────────────────────────
 // Mochi (☀️) and Moto (🌙) — roaming merchant siblings
 import { state, saveState, randInt } from './state.js';
-import { CAPSTONE_COIN_COSTS, MERCHANT_UNLOCK_COINS } from './npcs.js';
+import { MERCHANT_UNLOCK_COINS } from './npcs.js';
 import { toast } from './ui.js';
 
 // ── CONSTANTS ─────────────────────────────────────────────
@@ -20,14 +20,14 @@ const VISIT_WINDOW_MAX   = 60 * 60 * 1000;
 const SIBLING_DELAY_MIN  = 20 * 60 * 1000;
 const SIBLING_DELAY_MAX  = 30 * 60 * 1000;
 
-const HELIOS_DURATION    = 2 * 60 * 60 * 1000;
-const LIGHTLEAF_DURATION = 1 * 60 * 60 * 1000;
-const PHOTOSYNTH_DURATION= 1 * 60 * 60 * 1000;
-const VOID_BARN_DURATION = 2 * 60 * 60 * 1000;
-const FROZEN_DURATION    = 30 * 60 * 1000;
-const TRIPLE_SELL_DURATION = null;
-const MIRACLE_DURATION   = null;
-const STICKY_DURATION    = 30 * 60 * 1000;
+// Rebalanced Durations
+const HELIOS_DURATION    = 30 * 60 * 1000;    // 30 minutes
+const LIGHTLEAF_DURATION = 30 * 60 * 1000;    // 30 minutes
+const PHOTOSYNTH_DURATION= 30 * 60 * 1000;    // 30 minutes
+const VOID_BARN_DURATION = 1 * 60 * 60 * 1000; // 1 hour
+const FROZEN_DURATION    = 30 * 60 * 1000;    // 30 minutes
+const MIRACLE_DURATION   = 1 * 60 * 60 * 1000; // 1 hour
+const STICKY_DURATION    = 1 * 60 * 60 * 1000; // 1 hour
 
 // ── MOCHI'S ITEMS ─────────────────────────────────────────
 export const MOCHI_ITEMS = [
@@ -35,7 +35,7 @@ export const MOCHI_ITEMS = [
     id: 'helios',
     name: 'Helios Serum',
     icon: '🌟',
-    desc: 'Market Boom: All sell prices +20% for 2 hours.',
+    desc: 'Market Boom: All sell prices +50% for 30 minutes.', //
     effect: 'helios',
     duration: HELIOS_DURATION,
   },
@@ -43,7 +43,7 @@ export const MOCHI_ITEMS = [
     id: 'sundial',
     name: 'Sundial Dust',
     icon: '⏳',
-    desc: 'Time Warp: All current crop timers reduced by 10 minutes instantly.',
+    desc: 'Time Warp: All current crop timers reduced by 15 minutes instantly.', //
     effect: 'sundial',
     duration: null,
   },
@@ -51,7 +51,7 @@ export const MOCHI_ITEMS = [
     id: 'lightleaf',
     name: 'Light-Leaf Oil',
     icon: '🫙',
-    desc: 'Weightless Harvest: Crops take 0 barn space for 1 hour.',
+    desc: 'Weightless Harvest: Crops take 0 barn space for 30 minutes.', //
     effect: 'lightleaf',
     duration: LIGHTLEAF_DURATION,
   },
@@ -59,7 +59,7 @@ export const MOCHI_ITEMS = [
     id: 'photosynth',
     name: 'Photosynthesis',
     icon: '🌿',
-    desc: 'Perfect Growth: Crops immune to Flood and Overcast for 1 hour.',
+    desc: 'Bountiful Harvest: Every crop harvested gives +3 extra yield for 30 minutes.', //
     effect: 'photosynth',
     duration: PHOTOSYNTH_DURATION,
   },
@@ -79,8 +79,8 @@ export const MOTO_RIDDLES = [
   {
     id: 'wealth_bowl',
     riddle: '"Wealth for the soul, or a hole in the bowl?"',
-    good: { label: '💰 Triple Sell', desc: 'Next 10 items sold go for 3× value.' },
-    bad:  { label: '💸 Tax Man', desc: 'Moto "accidentally" takes 15% of your current coins.' },
+    good: { label: '💰 Triple Sell', desc: 'Next 30 items sold go for 3× value.' }, //
+    bad:  { label: '💸 Tax Man', desc: 'Moto "accidentally" takes 30% of your current coins.' }, //
     effect_good: 'triple_sell',
     effect_bad:  'tax',
     duration_bad: null,
@@ -89,16 +89,16 @@ export const MOTO_RIDDLES = [
     id: 'seeds_twice',
     riddle: '"Seeds that bloom twice, or seeds that turn to ice?"',
     good: { label: '🌱 Miracle Harvest', desc: 'Every harvest gives +5 yield for 1 hour.' },
-    bad:  { label: '🥶 Barren Earth', desc: 'Glove seed recovery drops to 0% for 1 hour.' },
+    bad:  { label: '🥶 Barren Earth', desc: 'Moto destroys 3 random rows of crops instantly!' }, //
     effect_good: 'miracle_harvest',
-    effect_bad:  'barren',
-    duration_bad: HELIOS_DURATION,
+    effect_bad:  'barren_destruction',
+    duration_bad: null,
   },
   {
     id: 'fits_sits',
     riddle: '"Everything fits, or everything sits?"',
-    good: { label: '🏚️ Void Barn', desc: 'Unlimited barn capacity for 2 hours.' },
-    bad:  { label: '🐌 Sticky Fingers', desc: 'You can only harvest one plot every 10 seconds for 30 minutes.' },
+    good: { label: '🏚️ Void Barn', desc: 'Unlimited barn capacity for 1 hour.' }, //
+    bad:  { label: '🐌 Sticky Fingers', desc: 'One harvest every 5 seconds for 1 hour.' }, //
     effect_good: 'void_barn',
     effect_bad:  'sticky',
     duration_bad: STICKY_DURATION,
@@ -127,7 +127,7 @@ export function effectActive(id) {
 }
 
 export function getMerchantSellMult() {
-  if (effectActive('helios'))      return 1.20;
+  if (effectActive('helios'))      return 1.50; // +50% bonus
   if (effectActive('triple_sell')) return 3.0;
   return 1.0;
 }
@@ -137,7 +137,9 @@ export function isBarnWeightless() {
 }
 
 export function getMiracleYield() {
-  return effectActive('miracle_harvest') ? 5 : 0;
+  if (effectActive('miracle_harvest')) return 5;
+  if (effectActive('photosynth')) return 3; // New +3 yield effect
+  return 0;
 }
 
 export function isTimerFrozen() {
@@ -145,7 +147,8 @@ export function isTimerFrozen() {
 }
 
 export function isBarrenEarth() {
-  return effectActive('barren');
+  // Legacy check, barren earth is now an instant event
+  return false;
 }
 
 export function isPhotosynthActive() {
@@ -153,7 +156,7 @@ export function isPhotosynthActive() {
 }
 
 export function getStickyDelay() {
-  return effectActive('sticky') ? 10000 : 0;
+  return effectActive('sticky') ? 5000 : 0; // 5 second delay
 }
 
 export function consumeTripleSellUse() {
@@ -162,7 +165,7 @@ export function consumeTripleSellUse() {
   eff.usesLeft--;
   if (eff.usesLeft <= 0) {
     state.merchant.effect = null;
-    toast('💸 Triple Sell expired — all 10 items sold!');
+    toast('💸 Triple Sell expired — all 30 items sold!'); // Updated cap
   }
   saveState();
   return 3.0;
@@ -181,6 +184,8 @@ export function tickMerchants() {
     const wasFrozen = m.effect.id === 'frozen' && m.effect.frozenAt;
     const frozenDuration = wasFrozen ? (m.effect.expiresAt - m.effect.frozenAt) : 0;
     m.effect = null;
+    
+    // Resume logic for Frozen Soil: shift plantedAt by the duration of the freeze
     if (frozenDuration > 0) {
       state.plots.forEach(p => {
         if (p.state === 'planted' && p.plantedAt) {
@@ -188,6 +193,7 @@ export function tickMerchants() {
         }
       });
     }
+    
     if (!m.nextVisitAt || m.nextVisitAt <= now) {
       m.nextVisitAt = now + randInt(VISIT_WINDOW_MIN, VISIT_WINDOW_MAX);
     }
@@ -280,17 +286,16 @@ export function buyMochiItem(itemId) {
   state.coins -= cost;
 
   if (item.effect === 'sundial') {
-    const tenMin = 10 * 60 * 1000;
+    const fifteenMin = 15 * 60 * 1000; // Increased to 15 minutes
     let shifted = 0;
     state.plots.forEach(p => {
       if (p.state === 'planted' && p.plantedAt) {
-        p.plantedAt = p.plantedAt - tenMin;
+        p.plantedAt = p.plantedAt - fifteenMin;
         shifted++;
       }
     });
-    // Set flag so Bodie's sundial tip can detect this purchase
     m.lastSundialAt = Date.now();
-    toast(`⏳ Sundial Dust! ${shifted} crop${shifted !== 1 ? 's' : ''} aged by 10 minutes.`);
+    toast(`⏳ Sundial Dust! ${shifted} crop${shifted !== 1 ? 's' : ''} aged by 15 minutes.`);
   } else {
     m.effect = {
       id:        item.effect,
@@ -298,7 +303,7 @@ export function buyMochiItem(itemId) {
       icon:      item.icon,
       expiresAt: Date.now() + item.duration,
     };
-    toast(`${item.icon} ${item.name} active for ${item.duration / 3600000 < 1 ? (item.duration / 60000) + ' min' : (item.duration / 3600000) + ' hrs'}!`);
+    toast(`${item.icon} ${item.name} active for 30 min!`); // Fixed duration
   }
 
   m.active = null;
@@ -336,27 +341,47 @@ export function buyMotoRiddle(riddleId) {
       });
       toast(`⚡ ${g.label}! All crops are ready to harvest!`);
     } else if (riddle.effect_good === 'triple_sell') {
-      m.effect = { id: 'triple_sell', label: 'Triple Sell', icon: '💰', usesLeft: 10 };
-      toast(`💰 ${g.label}! Next 10 items sell for 3× value!`);
+      m.effect = { id: 'triple_sell', label: 'Triple Sell', icon: '💰', usesLeft: 30 }; // 30 items
+      toast(`💰 ${g.label}! Next 30 items sell for 3× value!`);
     } else if (riddle.effect_good === 'miracle_harvest') {
-      m.effect = { id: 'miracle_harvest', label: 'Miracle Harvest', icon: '🌱', expiresAt: Date.now() + HELIOS_DURATION };
-      toast(`🌱 ${g.label}! +5 yield per harvest for 2 hours!`);
+      m.effect = { id: 'miracle_harvest', label: 'Miracle Harvest', icon: '🌱', expiresAt: Date.now() + MIRACLE_DURATION };
+      toast(`🌱 ${g.label}! +5 yield per harvest for 1 hour!`);
     } else if (riddle.effect_good === 'void_barn') {
       m.effect = { id: 'void_barn', label: 'Void Barn', icon: '🏚️', expiresAt: Date.now() + VOID_BARN_DURATION };
-      toast(`🏚️ ${g.label}! Unlimited barn for 2 hours!`);
+      toast(`🏚️ ${g.label}! Unlimited barn for 1 hour!`); // 1 hour duration
     }
   } else {
     const b = riddle.bad;
     if (riddle.effect_bad === 'tax') {
-      const tax = Math.floor(state.coins * 0.15);
+      const tax = Math.floor(state.coins * 0.30); // 30% tax
       state.coins = Math.max(0, state.coins - tax);
-      toast(`💸 ${b.label}! Moto took ${tax.toLocaleString()} 🪙…`);
-    } else if (riddle.effect_bad === 'instant_growth') {
+      toast(`💸 ${b.label}! Moto took ${tax.toLocaleString()} 🪙 (30%)…`);
+    } else if (riddle.effect_bad === 'frozen') {
       const frozenNow = Date.now();
       m.effect = { id: 'frozen', label: 'Frozen Soil', icon: '🧊', expiresAt: frozenNow + FROZEN_DURATION, frozenAt: frozenNow };
       toast(`🧊 ${b.label}! All timers frozen for 30 min!`);
+    } else if (riddle.effect_bad === 'barren_destruction') {
+      // Barren Earth: Destroy 3 random rows instantly
+      const rowsToKill = Math.min(3, state.rows);
+      const rowIndices = [];
+      while (rowIndices.length < rowsToKill) {
+        const r = randInt(0, state.rows - 1);
+        if (!rowIndices.includes(r)) rowIndices.push(r);
+      }
+      let destroyed = 0;
+      rowIndices.forEach(rIdx => {
+        for (let c = 0; c < state.cols; c++) {
+          const pIdx = rIdx * state.cols + c;
+          const p = state.plots[pIdx];
+          if (p.state !== 'empty' && p.state !== 'flooded') {
+            p.state = 'empty'; p.crop = null; p.plantedAt = null; p.watered = false; p.fertilized = false;
+            destroyed++;
+          }
+        }
+      });
+      toast(`🥶 ${b.label}! Moto destroyed ${destroyed} crops across 3 rows!`);
     } else {
-      m.effect = { id: riddle.effect_bad, label: b.label, icon: '💀', expiresAt: Date.now() + (riddle.duration_bad || FROZEN_DURATION) };
+      m.effect = { id: riddle.effect_bad, label: b.label, icon: '💀', expiresAt: Date.now() + (riddle.duration_bad || STICKY_DURATION) };
       toast(`${b.label} activated… good luck.`);
     }
   }
