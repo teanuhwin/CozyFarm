@@ -699,6 +699,9 @@ main {
   text-align: right;
   line-height: 1.2;
   max-width: 85px;
+  white-space: normal;      
+  overflow-wrap: anywhere;  
+  word-break: normal;
 }
 
 /* ── LOG TAB ── */
