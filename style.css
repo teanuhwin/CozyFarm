@@ -515,8 +515,9 @@ body:has(#tab-farm.active) #toast { display: none !important; }
   width: 100%;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.4;
 }
 
 .farm-info-bar.farm-info-toast {
