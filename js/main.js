@@ -38,8 +38,18 @@ import {
   updateWeatherBanner, updateTownVisibility, updateTownBadge,
   renderTownTab, tickTownCooldowns, renderLogTab,
   updateMerchantUI, openMerchantModal, tickMerchantBadge,
-  updateBodieUI, renderBodieBook,
+  updateBodieUI, renderBodieBook, updateFarmInfoBar,
 } from './ui.js';
+
+// Returns the ms timestamp to use as "now" for grow calculations.
+// When Frozen Soil is active we pin time at frozenAt so all progress bars stop.
+function effectiveNow() {
+  const eff = state.merchant && state.merchant.effect;
+  if (eff && eff.id === 'frozen' && eff.frozenAt && (!eff.expiresAt || Date.now() < eff.expiresAt)) {
+    return eff.frozenAt;
+  }
+  return Date.now();
+}
 
 import { getActiveTip, markBodieRead, isBodieUnread, refreshBodieQueue } from './bodie.js';
 
@@ -192,6 +202,7 @@ function clickPlot(idx) {
     updateHeader();
     updateFarmToolbar(selectedCrop, selectedTool);
     updateBodieUI();
+    updateFarmInfoBar();
   } else if (plot.state === 'planted') {
     showPlotOptions(idx);
   } else if (plot.state === 'ready') {
@@ -213,7 +224,7 @@ function showPlotOptions(idx) {
     photosynthActive:   isPhotosynthActive(),
   });
   const waterSpeedup = getWaterSpeedup() ?? WATER_SPEEDUP;
-  const effectiveElapsed = computeEffectiveElapsed(plot, waterSpeedup);
+  const effectiveElapsed = computeEffectiveElapsed(plot, waterSpeedup, effectiveNow());
 
   const remainingEffectiveMs = Math.max(0, growMs - effectiveElapsed);
   let remainingRealMs = remainingEffectiveMs;
@@ -748,6 +759,9 @@ function tick() {
   refreshBodieQueue();
   updateBodieUI();
 
+  // Keep the farm info bar countdown fresh
+  updateFarmInfoBar();
+
   const weatherMult = currentWeatherMultiplier();
   const currentWeather = (state.weather && state.weather.current) || 'clear';
   const isBadWeather = ['rain', 'thunder', 'flood'].includes(currentWeather);
@@ -766,7 +780,7 @@ function tick() {
         kalbiL5:            affinityLevelFor('kalbi') >= 5,
         photosynthActive:   isPhotosynthActive(),
       });
-      const elapsed = computeEffectiveElapsed(plot, getWaterSpeedup() ?? WATER_SPEEDUP);
+      const elapsed = computeEffectiveElapsed(plot, getWaterSpeedup() ?? WATER_SPEEDUP, effectiveNow());
 
       if (elapsed >= growMs) {
         plot.state = 'ready';
@@ -832,6 +846,7 @@ function doReset() {
   updateTownBadge();
   updateMerchantUI();
   updateBodieUI();
+  updateFarmInfoBar();
   closeModal();
   toast('🌱 Farm reset! Starting fresh.');
 }
@@ -877,6 +892,7 @@ function uploadSave(file) {
       updateMerchantUI();
       checkAchievements();
       updateBodieUI();
+      updateFarmInfoBar();
       toast('✅ Save loaded! Welcome back.');
     } catch (err) {
       toast('❌ Could not read save file.');
@@ -1028,6 +1044,7 @@ function init() {
   // Prime the Bodie queue on load before first render
   refreshBodieQueue();
   updateBodieUI();
+  updateFarmInfoBar();
   checkAchievements();
 
   setInterval(tick, 1000);

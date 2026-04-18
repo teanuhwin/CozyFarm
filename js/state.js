@@ -305,10 +305,19 @@ export function computeGrowMs(cropKey, weatherMult, isBadWeather, opts = {}) {
   return growMs;
 }
 
-export function computeEffectiveElapsed(plot, waterSpeedup) {
+/**
+ * Compute how much effective grow-time has elapsed for a plot.
+ *
+ * @param {object} plot
+ * @param {number} waterSpeedup  - the divisor applied to post-water real time (e.g. 0.65)
+ * @param {number} [nowOverride] - optional timestamp to use instead of Date.now().
+ *                                 Pass frozenAt when Frozen Soil is active so the
+ *                                 progress bar stops moving at the freeze moment.
+ */
+export function computeEffectiveElapsed(plot, waterSpeedup, nowOverride) {
   const FALLBACK = 0.65;
   const speedup  = waterSpeedup != null ? waterSpeedup : FALLBACK;
-  const now      = Date.now();
+  const now      = nowOverride != null ? nowOverride : Date.now();
   let elapsed    = now - (plot.plantedAt || now);
   if (plot.watered && plot.wateredAt) {
     const bw = Math.max(0, plot.wateredAt - plot.plantedAt);

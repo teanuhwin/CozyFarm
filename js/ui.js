@@ -35,22 +35,139 @@ function glovesChancePct()  { return npcLevel('kimchi')>=5?80:60; }
 // ── SHORTHAND ─────────────────────────────────────────────
 export function el(id) { return document.getElementById(id); }
 
+// ── FARM INFO BAR ─────────────────────────────────────────
+// Tracks whether a toast message is currently showing in the info bar
+let farmInfoToastActive = false;
+let farmInfoToastTimer  = null;
+
+function setFarmInfoBar(msg, isToast) {
+  const bar  = el('farm-info-bar');
+  const text = el('farm-info-text');
+  if (!bar || !text) return;
+  text.textContent = msg;
+  if (isToast) {
+    bar.classList.add('farm-info-toast');
+    bar.classList.remove('farm-info-idle');
+  } else {
+    bar.classList.add('farm-info-idle');
+    bar.classList.remove('farm-info-toast');
+  }
+}
+
+function clearFarmInfoToast() {
+  farmInfoToastActive = false;
+  clearTimeout(farmInfoToastTimer);
+  farmInfoToastTimer = null;
+  // Immediately refresh to show harvest countdown or blank
+  updateFarmInfoBar();
+}
+
+/** Compute next-harvest text, or empty string if nothing growing. */
+function nextHarvestText() {
+  const weatherMult  = currentWeatherMultiplier();
+  const curWeather   = (state.weather && state.weather.current) || 'clear';
+  const isBadWeather = ['rain', 'thunder', 'flood'].includes(curWeather);
+
+  let minRemainingSecs = Infinity;
+
+  state.plots.forEach(plot => {
+    if (plot.state !== 'planted') return;
+    const cropKey = plot.crop || 'wheat';
+
+    // Mirror the grow-mult logic from main.js without importing to avoid circular deps
+    const truffleGrowMult = npcLevel('ellie') >= 4 ? 0.80 : npcLevel('ellie') >= 2 ? 0.90 : 1.0;
+    const cornGrowMult    = npcLevel('twins') >= 5 ? 0.50 : 1.0;
+    const pumpkinWM       = npcLevel('maru')  >= 4 ? 0.70 : 1.0;
+    const kalbiL5         = npcLevel('kalbi') >= 5;
+
+    // Detect photosynth effect without importing merchants
+    const eff = state.merchant && state.merchant.effect;
+    const photosynthActive = !!(eff && eff.id === 'photosynth' && (!eff.expiresAt || Date.now() < eff.expiresAt));
+
+    const growMs = computeGrowMs(cropKey, weatherMult, isBadWeather, {
+      truffleGrowMult, cornGrowMult, pumpkinWeatherMult: pumpkinWM, kalbiL5, photosynthActive,
+    });
+
+    const cinnaLvl   = npcLevel('cinna');
+    const waterSpeed = cinnaLvl >= 5 ? 0.30 : cinnaLvl >= 3 ? 0.40 : cinnaLvl >= 1 ? 0.55 : 0.65;
+    // Pin time at frozenAt when Frozen Soil is active
+    const frozenEff2 = state.merchant && state.merchant.effect;
+    const frozenNow2 = (frozenEff2 && frozenEff2.id === 'frozen' && frozenEff2.frozenAt &&
+      (!frozenEff2.expiresAt || Date.now() < frozenEff2.expiresAt))
+      ? frozenEff2.frozenAt : undefined;
+    const elapsed    = computeEffectiveElapsed(plot, waterSpeed, frozenNow2);
+    const remainMs   = Math.max(0, growMs - elapsed);
+    const remainSecs = Math.ceil(remainMs / 1000);
+    if (remainSecs < minRemainingSecs) minRemainingSecs = remainSecs;
+  });
+
+  if (minRemainingSecs === Infinity) return '';
+
+  if (minRemainingSecs <= 0) return '🌾 Ready to harvest!';
+
+  const mins = Math.floor(minRemainingSecs / 60);
+  const secs = minRemainingSecs % 60;
+  const timeStr = mins > 0
+    ? `${mins}m${secs > 0 ? ' ' + secs + 's' : ''}`
+    : `${secs}s`;
+  return `⏱ ${timeStr} until next harvest`;
+}
+
+/** Called every tick to keep the countdown current (when no toast is active). */
+export function updateFarmInfoBar() {
+  if (farmInfoToastActive) return; // toast is showing, leave it
+  const merchant = state.merchant;
+  const eff = merchant && merchant.effect;
+  const now = Date.now();
+  if (eff && eff.id && (!eff.expiresAt || now < eff.expiresAt)) {
+    // Show active merchant effect in idle state
+    let timeStr = '';
+    if (eff.usesLeft !== undefined) {
+      timeStr = `${eff.usesLeft} use${eff.usesLeft !== 1 ? 's' : ''} left`;
+    } else if (eff.expiresAt) {
+      const secsLeft = Math.max(0, Math.ceil((eff.expiresAt - now) / 1000));
+      const h = Math.floor(secsLeft / 3600);
+      const m2 = Math.floor((secsLeft % 3600) / 60);
+      const s = secsLeft % 60;
+      if (h > 0)       timeStr = `${h}h ${m2}m`;
+      else if (m2 > 0) timeStr = `${m2}m ${s}s`;
+      else             timeStr = `${s}s`;
+    }
+    setFarmInfoBar(`${eff.icon} ${eff.label}${timeStr ? ' · ' + timeStr : ''}`, false);
+    return;
+  }
+  const harvest = nextHarvestText();
+  setFarmInfoBar(harvest, false);
+}
+
 // ── TOAST ─────────────────────────────────────────────────
 let toastTimer;
+
 export function toast(msg) {
+  // Show in farm info bar if farm tab is active
+  const farmPanel = el('tab-farm');
+  const onFarm = farmPanel && farmPanel.classList.contains('active');
+
+  if (onFarm) {
+    farmInfoToastActive = true;
+    clearTimeout(farmInfoToastTimer);
+    setFarmInfoBar(msg, true);
+    farmInfoToastTimer = setTimeout(() => {
+      clearFarmInfoToast();
+    }, 3000);
+  }
+
+  // Also show the floating toast (hidden on farm tab via CSS)
   const t = el('toast');
-  const badge = el('grid-size-badge');
   t.textContent = msg;
   t.style.pointerEvents = 'auto';
   t.style.cursor = 'pointer';
   t.classList.add('show');
-  if (badge) badge.style.visibility = 'hidden';
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
     t.classList.remove('show');
     t.style.pointerEvents = 'none';
     t.style.cursor = 'default';
-    if (badge) badge.style.visibility = '';
   }, 3000);
 }
 
@@ -61,24 +178,32 @@ export function dismissToast() {
   t.classList.remove('show');
   t.style.pointerEvents = 'none';
   t.style.cursor = 'default';
-  const badge = el('grid-size-badge');
-  if (badge) badge.style.visibility = '';
+
+  // Also clear farm info bar toast
+  if (farmInfoToastActive) {
+    clearFarmInfoToast();
+  }
 }
 
 // Wire up tap-to-dismiss on toast (done once at module load)
 function initToastDismiss() {
   const t = el('toast');
   if (!t) return;
-  // pointer-events start as 'none'; only enabled when toast is shown
   t.style.pointerEvents = 'none';
   t.addEventListener('click', () => {
     clearTimeout(toastTimer);
     t.classList.remove('show');
     t.style.pointerEvents = 'none';
     t.style.cursor = 'default';
-    const badge = el('grid-size-badge');
-    if (badge) badge.style.visibility = '';
   });
+
+  // Tap on farm info bar to dismiss early
+  const bar = el('farm-info-bar');
+  if (bar) {
+    bar.addEventListener('click', () => {
+      if (farmInfoToastActive) clearFarmInfoToast();
+    });
+  }
 }
 if (typeof document !== 'undefined') {
   if (document.readyState === 'loading') {
@@ -233,7 +358,6 @@ export function renderGrid() {
     };
   });
 
-  el('grid-size-badge').textContent = `${state.rows} × ${state.cols}`;
   for (let i = 0; i < needed; i++) renderPlot(i);
 }
 
@@ -289,7 +413,12 @@ export function renderPlot(idx) {
       });
       const cinnaLvl   = npcLevel('cinna');
       const waterSpeed = cinnaLvl >= 5 ? 0.30 : cinnaLvl >= 3 ? 0.40 : cinnaLvl >= 1 ? 0.55 : 0.65;
-      const effectiveElapsed = computeEffectiveElapsed(plot, waterSpeed);
+      // Pin elapsed time at frozenAt when Frozen Soil is active so the bar stops visually
+      const frozenEff = state.merchant && state.merchant.effect;
+      const frozenNowOverride = (frozenEff && frozenEff.id === 'frozen' && frozenEff.frozenAt &&
+        (!frozenEff.expiresAt || Date.now() < frozenEff.expiresAt))
+        ? frozenEff.frozenAt : undefined;
+      const effectiveElapsed = computeEffectiveElapsed(plot, waterSpeed, frozenNowOverride);
       const pct = Math.min(100, (effectiveElapsed / effectiveGrowMs) * 100);
       bar.style.width   = pct + '%';
       label.textContent = crop.name;
@@ -870,24 +999,8 @@ export function updateMerchantUI() {
     sun.style.display  = (m.active === 'mochi') ? 'flex' : 'none';
     moon.style.display = (m.active === 'moto')  ? 'flex' : 'none';
 
-    const effBadge = el('merchant-effect-badge');
-    if (effBadge) {
-      const eff = m.effect;
-      const now = Date.now();
-      if (eff && eff.id && (!eff.expiresAt || now < eff.expiresAt)) {
-        const mins = eff.expiresAt ? Math.ceil((eff.expiresAt - now) / 60000) : null;
-        const uses = eff.usesLeft !== undefined ? `${eff.usesLeft} left` : null;
-        const timeStr = uses || (mins !== null ? `${mins}m` : '');
-        effBadge.textContent = `${eff.icon} ${eff.label}${timeStr ? ' · ' + timeStr : ''}`;
-        effBadge.style.display = 'flex';
-        const pill2 = el('grid-size-badge');
-        if (pill2) pill2.style.display = 'none';
-      } else {
-        effBadge.style.display = 'none';
-        const pill2 = el('grid-size-badge');
-        if (pill2) pill2.style.display = '';
-      }
-    }
+    // Refresh the farm info bar since merchant effect may have changed
+    updateFarmInfoBar();
 
     const outModal = el('moto-outcome-modal');
     if (outModal) {
@@ -908,33 +1021,8 @@ export function updateMerchantUI() {
 }
 
 export function tickMerchantBadge() {
-  const effBadge = el('merchant-effect-badge');
-  if (!effBadge) return;
-  const m   = state.merchant;
-  const eff = m && m.effect;
-  const now = Date.now();
-  if (eff && eff.id && (!eff.expiresAt || now < eff.expiresAt)) {
-    let timeStr = '';
-    if (eff.usesLeft !== undefined) {
-      timeStr = `${eff.usesLeft} use${eff.usesLeft !== 1 ? 's' : ''} left`;
-    } else if (eff.expiresAt) {
-      const secsLeft = Math.max(0, Math.ceil((eff.expiresAt - now) / 1000));
-      const h = Math.floor(secsLeft / 3600);
-      const m2 = Math.floor((secsLeft % 3600) / 60);
-      const s = secsLeft % 60;
-      if (h > 0)       timeStr = `${h}h ${m2}m`;
-      else if (m2 > 0) timeStr = `${m2}m ${s}s`;
-      else             timeStr = `${s}s`;
-    }
-    effBadge.textContent  = `${eff.icon} ${eff.label}${timeStr ? ' · ' + timeStr : ''}`;
-    effBadge.style.display = 'flex';
-    const pill = el('grid-size-badge');
-    if (pill) pill.style.display = 'none';
-  } else {
-    effBadge.style.display = 'none';
-    const pill = el('grid-size-badge');
-    if (pill) pill.style.display = '';
-  }
+  // Keep merchant effect display synced in the farm info bar (when no toast active)
+  updateFarmInfoBar();
 }
 
 export function openMerchantModal(who) {
