@@ -76,11 +76,13 @@
       </button>
     </div>
 
+    <!-- Farm info bar: shows toasts inline, or next-harvest countdown -->
     <div class="grid-meta-row">
       <button id="merchant-mochi" class="merchant-icon mochi-icon" style="display:none" title="Mochi is visiting!">☀️</button>
       <div class="grid-meta-center">
-        <div class="grid-size-badge" id="grid-size-badge">2 × 2</div>
-        <div id="merchant-effect-badge" class="merchant-effect-badge" style="display:none"></div>
+        <div id="farm-info-bar" class="farm-info-bar">
+          <span id="farm-info-text"></span>
+        </div>
       </div>
       <button id="merchant-moto" class="merchant-icon moto-icon" style="display:none" title="Moto is visiting!">🌙</button>
     </div>
@@ -454,7 +456,7 @@
   </button>
 </nav>
 
-<!-- Toast notification -->
+<!-- Toast notification (used on non-farm tabs) -->
 <div id="toast"></div>
 
 <!-- Merchant modal -->

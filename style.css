@@ -467,7 +467,7 @@ main {
   border-color: color-mix(in srgb, var(--red) 40%, var(--border));
 }
 
-/* ── TOAST ── */
+/* ── TOAST (floating — used on non-farm tabs) ── */
 #toast {
   position: fixed;
   top: 88px;
@@ -489,6 +489,60 @@ main {
   pointer-events: none;
 }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Hide the floating toast when the farm tab is active — messages show in the info bar instead */
+#tab-farm.active ~ * #toast,
+body:has(#tab-farm.active) #toast { display: none !important; }
+
+/* ── FARM INFO BAR ── */
+.farm-info-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 4px 12px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--card);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text3);
+  text-align: center;
+  cursor: default;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.farm-info-bar.farm-info-toast {
+  border-color: var(--accent);
+  background: var(--card2);
+  color: var(--text);
+  cursor: pointer;
+  animation: info-bar-in 0.18s ease;
+}
+
+.farm-info-bar.farm-info-idle {
+  color: var(--text3);
+  border-color: var(--border);
+  background: var(--card);
+}
+
+/* Empty idle state — hide border to save visual noise */
+.farm-info-bar.farm-info-idle:empty,
+.farm-info-bar.farm-info-idle #farm-info-text:empty {
+  opacity: 0;
+}
+
+@keyframes info-bar-in {
+  from { opacity: 0.5; transform: scaleY(0.9); }
+  to   { opacity: 1;   transform: scaleY(1); }
+}
 
 /* ── MODAL ── */
 .modal-overlay {
@@ -583,19 +637,6 @@ main {
   background: var(--card2);
 }
 .tool-stock { font-size: 11px; opacity: 0.75; }
-
-.grid-size-badge {
-  display: inline-block;
-  background: var(--card);
-  border: 1.5px solid var(--border);
-  border-radius: 10px;
-  padding: 3px 10px;
-  font-family: 'Silkscreen', monospace;
-  font-weight: 400;
-  font-size: 12px;
-  color: var(--text2);
-  margin-bottom: 8px;
-}
 
 /* ── BODIE ROW ── */
 /* Outer row: Bodie zone (left 1/3) + weather card (right 2/3) */
@@ -998,7 +1039,6 @@ main {
   align-items: center;
   gap: 4px;
 }
-.grid-meta-row .grid-size-badge { margin-bottom: 0; }
 
 .merchant-icon {
   background: none;
@@ -1034,21 +1074,6 @@ main {
 @keyframes moto-pulse {
   0%, 100% { box-shadow: 0 0 8px rgba(138,111,207,0.4); }
   50%       { box-shadow: 0 0 18px rgba(138,111,207,0.7); transform: scale(1.08); }
-}
-
-.merchant-effect-badge {
-  background: var(--card2);
-  border: 1.5px solid var(--border);
-  border-radius: 10px;
-  padding: 3px 10px;
-  font-size: 11px;
-  font-weight: 400;
-  text-align: center;
-  color: var(--accent2);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
 }
 
 .merchant-modal-box {
