@@ -16,13 +16,6 @@ A cozy idle farming game that runs entirely in your browser — no server, no lo
 
 ## 🏘️ Town Square (Phase 2)
 
-The Town Square is the ultimate destination for master farmers. It remains hidden until your farm reaches its peak potential.
-
-### **Unlock Requirements**
-The Town tab appears automatically once you meet these two conditions:
-* **6×6 Farm Grid:** Fully expanded plots.
-* **Level 3 Barn:** Maxed storage capacity (100 slots).
-
 ### **The Residents**
 Meet 7 unique NPCs, each with their own comical needs and request types:
 * **Mayor Kimchi:** A literal dog who runs the town via an assistant.
@@ -32,27 +25,6 @@ Meet 7 unique NPCs, each with their own comical needs and request types:
 * **Hunter Maru:** A cool cat with a sarcastic crow translator.
 * **Herbalist Cinna:** Calm and medicinal; requests ingredients for her apothecary.
 * **Wizard Kola:** Eccentric and cosmic; asks for resources to stabilize the moon.
-
----
-
-## 🌾 Crops & 🧪 Supplies
-
-### **Crops**
-| Crop | Grow Time | Seed Cost | Sell Price | Unlocks At |
-| :--- | :--- | :--- | :--- | :--- |
-| 🌾 Wheat | 2 min | 🪙5 | 🪙10 | Start |
-| 🌽 Corn | 8 min | 🪙15 | 🪙40 | 200🪙 Lifetime |
-| 🎃 Pumpkin | 15 min | 🪙25 | 🪙80 | 500🪙 Lifetime |
-| 🍄 Truffle | 45 min | 🪙50 | 🪙220 | 1500🪙 Lifetime |
-
-### **Supplies**
-| Item | Cost | Effect |
-| :--- | :--- | :--- |
-| 💧 Water | 🪙6 | 35% faster grow time |
-| 🚿 Water Hose | 🪙200 | Waters all growing plots instantly |
-| 🌿 Fertilizer | 🪙8 | +2 yield on harvest |
-| 🧺 Big Fertilizer | 🪙280 | Fertilizes all growing plots instantly |
-| 🧤 Gloves | 🪙80 | 60% chance to recover 1 seed (20 uses) |
 
 ---
 
@@ -68,8 +40,3 @@ This project has been refactored into a **modular ES6 structure** for efficiency
 * `js/npcs.js`: Town Square logic, NPC data, and request generation.
 * `js/ui.js`: Dynamic DOM rendering and plot updates.
 * `js/bodie.js`: Helper Bodie logic. 
-
----
-
-## 🚀 Roadmap
-* 🏆 Additional achievements and milestones.
