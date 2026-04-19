@@ -10,6 +10,7 @@ import {
   barnCap, totalBarnContents, expandCost, initPlots,
   currentWeatherMultiplier, pickWeather, formatTime, migrateState,
   computeGrowMs, computeEffectiveElapsed,
+  effectiveNow, waterSpeedupFactor, computePlotRemainingMs,
 } from './state.js';
 
 import {
@@ -41,16 +42,6 @@ import {
   updateBodieUI, renderBodieBook, updateFarmInfoBar,
 } from './ui.js';
 
-// Returns the ms timestamp to use as "now" for grow calculations.
-// When Frozen Soil is active we pin time at frozenAt so all progress bars stop.
-function effectiveNow() {
-  const eff = state.merchant && state.merchant.effect;
-  if (eff && eff.id === 'frozen' && eff.frozenAt && (!eff.expiresAt || Date.now() < eff.expiresAt)) {
-    return eff.frozenAt;
-  }
-  return Date.now();
-}
-
 import { getActiveTip, markBodieRead, isBodieUnread, refreshBodieQueue } from './bodie.js';
 
 // ── INTERACTION STATE ─────────────────────────────────────
@@ -61,6 +52,24 @@ let lastHarvestTime = 0;
 
 function affinityLevelFor(npcId) {
   return Math.min(5, Math.floor((state.npcs[npcId]?.affinity || 0) / 3));
+}
+
+// ── BUILD GROW OPTS FOR CURRENT STATE ─────────────────────
+// Single helper so main.js, tick(), and showPlotOptions() all use
+// identical inputs to computeGrowMs / computePlotRemainingMs.
+function buildGrowOpts() {
+  const weatherMult  = currentWeatherMultiplier();
+  const curWeather   = (state.weather && state.weather.current) || 'clear';
+  const isBadWeather = ['rain', 'thunder', 'flood'].includes(curWeather);
+  return {
+    weatherMult,
+    isBadWeather,
+    truffleGrowMult:    getTruffleGrowMult(),
+    cornGrowMult:       getCornGrowMult(),
+    pumpkinWeatherMult: getPumpkinWeatherMult(),
+    kalbiL5:            affinityLevelFor('kalbi') >= 5,
+    photosynthActive:   isPhotosynthActive(),
+  };
 }
 
 // ── TOOL / CROP SELECTION ─────────────────────────────────
@@ -81,28 +90,17 @@ function applyWaterSpeedup(plot) {
 
 // ── BODIE CLICK ───────────────────────────────────────────
 function clickBodie() {
-  // Dismiss any currently visible toast immediately so the button stays reachable
   dismissToast();
-
-  // Refresh queue so any newly-satisfied tips are enqueued first
   refreshBodieQueue();
 
   const tip = getActiveTip();
   if (!tip) return;
 
-  // Show this tip
   toast(`🐾 ${tip.text}`);
-
-  // Dequeue, mark seen, and log to the collection
   markBodieRead();
-
-  // Refresh queue again so button state reflects remaining tips
   refreshBodieQueue();
-
-  // Update button (pulse count label)
   updateBodieUI();
 
-  // Refresh the Book of Barns if the settings tab is currently open
   const settingsPanel = el('tab-settings');
   if (settingsPanel && settingsPanel.classList.contains('active')) {
     renderBodieBook();
@@ -211,29 +209,13 @@ function clickPlot(idx) {
 }
 
 function showPlotOptions(idx) {
-  const plot           = state.plots[idx];
-  const cropKey        = plot.crop || 'wheat';
-  const weatherMult    = currentWeatherMultiplier();
-  const currentWeather = (state.weather && state.weather.current) || 'clear';
-  const isBadWeather   = ['rain', 'thunder', 'flood'].includes(currentWeather);
-  const growMs = computeGrowMs(cropKey, weatherMult, isBadWeather, {
-    truffleGrowMult:    getTruffleGrowMult(),
-    cornGrowMult:       getCornGrowMult(),
-    pumpkinWeatherMult: getPumpkinWeatherMult(),
-    kalbiL5:            affinityLevelFor('kalbi') >= 5,
-    photosynthActive:   isPhotosynthActive(),
-  });
-  const waterSpeedup = getWaterSpeedup() ?? WATER_SPEEDUP;
-  const effectiveElapsed = computeEffectiveElapsed(plot, waterSpeedup, effectiveNow());
+  const plot       = state.plots[idx];
+  const growOpts   = buildGrowOpts();
+  const cinnaLvl   = affinityLevelFor('cinna');
+  const waterFactor = waterSpeedupFactor(cinnaLvl);
 
-  const remainingEffectiveMs = Math.max(0, growMs - effectiveElapsed);
-  let remainingRealMs = remainingEffectiveMs;
-  if (plot.watered) {
-    const cinnaLvl = affinityLevelFor('cinna');
-    const waterFactor = cinnaLvl >= 5 ? 0.30 : cinnaLvl >= 3 ? 0.40 : cinnaLvl >= 1 ? 0.55 : 0.65;
-    remainingRealMs = remainingEffectiveMs * waterFactor;
-  }
-  const remaining = Math.ceil(remainingRealMs / 1000);
+  const { realMsRemaining } = computePlotRemainingMs(plot, growOpts, waterFactor);
+  const remaining = Math.ceil(realMsRemaining / 1000);
 
   const mods = [];
   if (plot.watered)    mods.push('💧 watered');
@@ -332,7 +314,6 @@ function harvestPlot(idx) {
   let seedReturned = false;
   const curGlovesUses = getGlovesUses();
   const glovesChance  = isBarrenEarth() ? 0 : (getGlovesChance() !== null ? getGlovesChance() : GLOVES_CHANCE);
-  const glovesMax     = curGlovesUses === Infinity ? Infinity : (curGlovesUses !== null ? curGlovesUses : GLOVES_USES);
 
   if (state.glovesDurability > 0) {
     if (Math.random() < glovesChance) {
@@ -628,7 +609,6 @@ function onWeatherStart(id) {
   } else {
     toast('🌤️ Skies have cleared up.');
   }
-  // Weather change triggers Bodie queue refresh
   updateBodieUI();
 }
 
@@ -755,16 +735,11 @@ function tick() {
   tickMerchantBadge();
   tickTownCooldowns();
 
-  // Refresh Bodie queue once per second to catch newly-satisfied tips
   refreshBodieQueue();
   updateBodieUI();
-
-  // Keep the farm info bar countdown fresh
   updateFarmInfoBar();
 
-  const weatherMult = currentWeatherMultiplier();
-  const currentWeather = (state.weather && state.weather.current) || 'clear';
-  const isBadWeather = ['rain', 'thunder', 'flood'].includes(currentWeather);
+  const growOpts = buildGrowOpts();
   let changed = false;
 
   state.plots.forEach((plot, i) => {
@@ -772,17 +747,11 @@ function tick() {
     if (plot.state === 'planted') {
       if (isTimerFrozen()) { renderPlot(i); return; }
 
-      const cropKey = plot.crop || 'wheat';
-      const growMs  = computeGrowMs(cropKey, weatherMult, isBadWeather, {
-        truffleGrowMult:    getTruffleGrowMult(),
-        cornGrowMult:       getCornGrowMult(),
-        pumpkinWeatherMult: getPumpkinWeatherMult(),
-        kalbiL5:            affinityLevelFor('kalbi') >= 5,
-        photosynthActive:   isPhotosynthActive(),
-      });
-      const elapsed = computeEffectiveElapsed(plot, getWaterSpeedup() ?? WATER_SPEEDUP, effectiveNow());
+      const cinnaLvl   = affinityLevelFor('cinna');
+      const waterFactor = waterSpeedupFactor(cinnaLvl);
+      const { effectiveMsRemaining } = computePlotRemainingMs(plot, growOpts, waterFactor);
 
-      if (elapsed >= growMs) {
+      if (effectiveMsRemaining <= 0) {
         plot.state = 'ready';
         changed    = true;
         if (!notifiedPlots.has(i)) {
@@ -923,7 +892,6 @@ function wireEvents() {
   document.getElementById('tool-btn-water').addEventListener('click',   () => selectTool('water'));
   document.getElementById('tool-btn-fert').addEventListener('click',    () => selectTool('fert'));
 
-  // Bodie guide button
   document.getElementById('bodie-btn').addEventListener('click', () => clickBodie());
 
   document.getElementById('sell-all-crops-btn').addEventListener('click', () => sellAllCrops());
@@ -1009,21 +977,14 @@ function init() {
   el('setting-dark').checked    = settings.dark;
   el('setting-vibrate').checked = settings.vibrate;
 
-  const catchUpWeatherMult = currentWeatherMultiplier();
-  const catchUpWeather     = (state.weather && state.weather.current) || 'clear';
-  const catchUpBadWeather  = ['rain', 'thunder', 'flood'].includes(catchUpWeather);
+  // Catch-up: mark any plots that finished while the tab was closed
+  const catchUpGrowOpts = buildGrowOpts();
   state.plots.forEach(plot => {
     if (plot.state === 'planted') {
-      const cropKey = plot.crop || 'wheat';
-      const growMs  = computeGrowMs(cropKey, catchUpWeatherMult, catchUpBadWeather, {
-        truffleGrowMult:    getTruffleGrowMult(),
-        cornGrowMult:       getCornGrowMult(),
-        pumpkinWeatherMult: getPumpkinWeatherMult(),
-        kalbiL5:            affinityLevelFor('kalbi') >= 5,
-        photosynthActive:   isPhotosynthActive(),
-      });
-      const elapsed = computeEffectiveElapsed(plot, getWaterSpeedup() ?? WATER_SPEEDUP);
-      if (elapsed >= growMs) plot.state = 'ready';
+      const cinnaLvl    = affinityLevelFor('cinna');
+      const waterFactor = waterSpeedupFactor(cinnaLvl);
+      const { effectiveMsRemaining } = computePlotRemainingMs(plot, catchUpGrowOpts, waterFactor);
+      if (effectiveMsRemaining <= 0) plot.state = 'ready';
     }
   });
 
@@ -1041,7 +1002,6 @@ function init() {
   updateWeatherBanner();
   updateMerchantUI();
 
-  // Prime the Bodie queue on load before first render
   refreshBodieQueue();
   updateBodieUI();
   updateFarmInfoBar();

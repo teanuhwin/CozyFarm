@@ -8,11 +8,13 @@ import {
   WATER_UNLOCK_COINS, FERT_UNLOCK_COINS,
   barnCap, totalBarnContents, expandCost, currentWeatherMultiplier, formatTime,
   computeGrowMs, computeEffectiveElapsed,
+  effectiveNow, waterSpeedupFactor, computePlotRemainingMs,
 } from './state.js';
 import {
   NPC_DATA, NPC_ORDER, CROP_EMOJI,
   isTownUnlocked, migrateNpcs, unlockedNpcIds, canFulfill,
   affinityLevel, bonusForLevel, activeBonusText, currentStoryText,
+  getTruffleGrowMult, getCornGrowMult, getPumpkinWeatherMult,
 } from './npcs.js';
 
 // ── LOCAL AFFINITY HELPER (avoids circular import) ────────
@@ -31,12 +33,10 @@ function bigFertYieldAmt()  { const l=npcLevel('kola'); return l>=3?5:l>=1?3:2; 
 function glovesMaxUses()    { const l=npcLevel('kimchi');  return l>=5?Infinity:l>=4?60:l>=3?50:l>=2?40:l>=1?30:20; }
 function glovesChancePct()  { return npcLevel('kimchi')>=5?80:60; }
 
-
 // ── SHORTHAND ─────────────────────────────────────────────
 export function el(id) { return document.getElementById(id); }
 
 // ── FARM INFO BAR ─────────────────────────────────────────
-// Tracks whether a toast message is currently showing in the info bar
 let farmInfoToastActive = false;
 let farmInfoToastTimer  = null;
 
@@ -58,55 +58,54 @@ function clearFarmInfoToast() {
   farmInfoToastActive = false;
   clearTimeout(farmInfoToastTimer);
   farmInfoToastTimer = null;
-  // Immediately refresh to show harvest countdown or blank
   updateFarmInfoBar();
 }
 
-/** Compute next-harvest text, or empty string if nothing growing. */
-function nextHarvestText() {
+/**
+ * Build the grow-opts object using the authoritative NPC functions imported
+ * from npcs.js. This mirrors buildGrowOpts() in main.js so that ui.js never
+ * needs to re-declare NPC multipliers inline.
+ */
+function buildGrowOptsForUI() {
   const weatherMult  = currentWeatherMultiplier();
   const curWeather   = (state.weather && state.weather.current) || 'clear';
   const isBadWeather = ['rain', 'thunder', 'flood'].includes(curWeather);
 
-  let minRemainingSecs = Infinity;
+  // Detect photosynth effect without importing merchants (no circular dep)
+  const eff = state.merchant && state.merchant.effect;
+  const photosynthActive = !!(eff && eff.id === 'photosynth' && (!eff.expiresAt || Date.now() < eff.expiresAt));
+
+  return {
+    weatherMult,
+    isBadWeather,
+    truffleGrowMult:    getTruffleGrowMult(),
+    cornGrowMult:       getCornGrowMult(),
+    pumpkinWeatherMult: getPumpkinWeatherMult(),
+    kalbiL5:            npcLevel('kalbi') >= 5,
+    photosynthActive,
+  };
+}
+
+/** Compute next-harvest text, or empty string if nothing growing. */
+function nextHarvestText() {
+  const growOpts    = buildGrowOptsForUI();
+  const cinnaLvl    = npcLevel('cinna');
+  const waterFactor = waterSpeedupFactor(cinnaLvl);
+
+  let minRealMsRemaining = Infinity;
 
   state.plots.forEach(plot => {
     if (plot.state !== 'planted') return;
-    const cropKey = plot.crop || 'wheat';
-
-    // Mirror the grow-mult logic from main.js without importing to avoid circular deps
-    const truffleGrowMult = npcLevel('ellie') >= 4 ? 0.80 : npcLevel('ellie') >= 2 ? 0.90 : 1.0;
-    const cornGrowMult    = npcLevel('twins') >= 5 ? 0.50 : 1.0;
-    const pumpkinWM       = npcLevel('maru')  >= 4 ? 0.70 : 1.0;
-    const kalbiL5         = npcLevel('kalbi') >= 5;
-
-    // Detect photosynth effect without importing merchants
-    const eff = state.merchant && state.merchant.effect;
-    const photosynthActive = !!(eff && eff.id === 'photosynth' && (!eff.expiresAt || Date.now() < eff.expiresAt));
-
-    const growMs = computeGrowMs(cropKey, weatherMult, isBadWeather, {
-      truffleGrowMult, cornGrowMult, pumpkinWeatherMult: pumpkinWM, kalbiL5, photosynthActive,
-    });
-
-    const cinnaLvl   = npcLevel('cinna');
-    const waterSpeed = cinnaLvl >= 5 ? 0.30 : cinnaLvl >= 3 ? 0.40 : cinnaLvl >= 1 ? 0.55 : 0.65;
-    // Pin time at frozenAt when Frozen Soil is active
-    const frozenEff2 = state.merchant && state.merchant.effect;
-    const frozenNow2 = (frozenEff2 && frozenEff2.id === 'frozen' && frozenEff2.frozenAt &&
-      (!frozenEff2.expiresAt || Date.now() < frozenEff2.expiresAt))
-      ? frozenEff2.frozenAt : undefined;
-    const elapsed    = computeEffectiveElapsed(plot, waterSpeed, frozenNow2);
-    const remainMs   = Math.max(0, growMs - elapsed);
-    const remainSecs = Math.ceil(remainMs / 1000);
-    if (remainSecs < minRemainingSecs) minRemainingSecs = remainSecs;
+    const { realMsRemaining } = computePlotRemainingMs(plot, growOpts, waterFactor);
+    if (realMsRemaining < minRealMsRemaining) minRealMsRemaining = realMsRemaining;
   });
 
-  if (minRemainingSecs === Infinity) return '';
+  if (minRealMsRemaining === Infinity) return '';
+  if (minRealMsRemaining <= 0) return '🌾 Ready to harvest!';
 
-  if (minRemainingSecs <= 0) return '🌾 Ready to harvest!';
-
-  const mins = Math.floor(minRemainingSecs / 60);
-  const secs = minRemainingSecs % 60;
+  const totalSecs = Math.ceil(minRealMsRemaining / 1000);
+  const mins = Math.floor(totalSecs / 60);
+  const secs = totalSecs % 60;
   const timeStr = mins > 0
     ? `${mins}m${secs > 0 ? ' ' + secs + 's' : ''}`
     : `${secs}s`;
@@ -115,12 +114,11 @@ function nextHarvestText() {
 
 /** Called every tick to keep the countdown current (when no toast is active). */
 export function updateFarmInfoBar() {
-  if (farmInfoToastActive) return; // toast is showing, leave it
+  if (farmInfoToastActive) return;
   const merchant = state.merchant;
   const eff = merchant && merchant.effect;
   const now = Date.now();
   if (eff && eff.id && (!eff.expiresAt || now < eff.expiresAt)) {
-    // Show active merchant effect in idle state
     let timeStr = '';
     if (eff.usesLeft !== undefined) {
       timeStr = `${eff.usesLeft} use${eff.usesLeft !== 1 ? 's' : ''} left`;
@@ -144,7 +142,6 @@ export function updateFarmInfoBar() {
 let toastTimer;
 
 export function toast(msg) {
-  // Show in farm info bar if farm tab is active
   const farmPanel = el('tab-farm');
   const onFarm = farmPanel && farmPanel.classList.contains('active');
 
@@ -157,7 +154,6 @@ export function toast(msg) {
     }, 3000);
   }
 
-  // Also show the floating toast (hidden on farm tab via CSS)
   const t = el('toast');
   t.textContent = msg;
   t.style.pointerEvents = 'auto';
@@ -179,13 +175,11 @@ export function dismissToast() {
   t.style.pointerEvents = 'none';
   t.style.cursor = 'default';
 
-  // Also clear farm info bar toast
   if (farmInfoToastActive) {
     clearFarmInfoToast();
   }
 }
 
-// Wire up tap-to-dismiss on toast (done once at module load)
 function initToastDismiss() {
   const t = el('toast');
   if (!t) return;
@@ -197,7 +191,6 @@ function initToastDismiss() {
     t.style.cursor = 'default';
   });
 
-  // Tap on farm info bar to dismiss early
   const bar = el('farm-info-bar');
   if (bar) {
     bar.addEventListener('click', () => {
@@ -261,7 +254,7 @@ export function renderBodieBook() {
   if (!list) return;
 
   import('./bodie.js').then(({ getCollectedTips }) => {
-    const entries = getCollectedTips(); // newest first
+    const entries = getCollectedTips();
     list.innerHTML = '';
 
     if (entries.length === 0) {
@@ -270,7 +263,6 @@ export function renderBodieBook() {
       return;
     }
 
-    // Count header
     const countRow = document.createElement('div');
     countRow.style.cssText = 'padding:10px 16px 6px;font-size:11px;color:var(--text3);font-weight:700;letter-spacing:0.05em;text-transform:uppercase;border-bottom:1px solid var(--border)';
     countRow.textContent = `${entries.length} entr${entries.length === 1 ? 'y' : 'ies'} collected`;
@@ -305,7 +297,6 @@ export function renderBodieBook() {
       list.appendChild(row);
     });
 
-    // Show more / show less button
     if (entries.length > BOOK_PREVIEW_COUNT) {
       const toggleRow = document.createElement('div');
       toggleRow.style.cssText = 'border-top:1px solid var(--border);padding:10px 16px;text-align:center';
@@ -398,28 +389,30 @@ export function renderPlot(idx) {
 
     if (plot.state === 'planted') {
       emoji.textContent = crop.seedling;
-      const cropKey        = plot.crop || 'wheat';
-      const weatherMult    = currentWeatherMultiplier();
-      const curWeather     = (state.weather && state.weather.current) || 'clear';
-      const isBadWeather   = ['rain', 'thunder', 'flood'].includes(curWeather);
-      const eff            = state.merchant && state.merchant.effect;
-      const photosynthOn   = !!(eff && eff.id === 'photosynth' && (!eff.expiresAt || Date.now() < eff.expiresAt));
-      const effectiveGrowMs = computeGrowMs(cropKey, weatherMult, isBadWeather, {
-        truffleGrowMult:    npcLevel('ellie') >= 4 ? 0.80 : npcLevel('ellie') >= 2 ? 0.90 : 1.0,
-        cornGrowMult:       npcLevel('twins') >= 5 ? 0.50 : 1.0,
-        pumpkinWeatherMult: npcLevel('maru')  >= 4 ? 0.70 : 1.0,
-        kalbiL5:            npcLevel('kalbi') >= 5,
-        photosynthActive:   photosynthOn,
-      });
-      const cinnaLvl   = npcLevel('cinna');
-      const waterSpeed = cinnaLvl >= 5 ? 0.30 : cinnaLvl >= 3 ? 0.40 : cinnaLvl >= 1 ? 0.55 : 0.65;
-      // Pin elapsed time at frozenAt when Frozen Soil is active so the bar stops visually
-      const frozenEff = state.merchant && state.merchant.effect;
-      const frozenNowOverride = (frozenEff && frozenEff.id === 'frozen' && frozenEff.frozenAt &&
-        (!frozenEff.expiresAt || Date.now() < frozenEff.expiresAt))
-        ? frozenEff.frozenAt : undefined;
-      const effectiveElapsed = computeEffectiveElapsed(plot, waterSpeed, frozenNowOverride);
-      const pct = Math.min(100, (effectiveElapsed / effectiveGrowMs) * 100);
+
+      // Use the canonical helpers — no local re-declarations
+      const growOpts    = buildGrowOptsForUI();
+      const cinnaLvl    = npcLevel('cinna');
+      const waterFactor = waterSpeedupFactor(cinnaLvl);
+
+      const { effectiveMsRemaining } = computePlotRemainingMs(plot, growOpts, waterFactor);
+
+      // Recompute total growMs for the percentage bar
+      const growMs = computeGrowMs(
+        plot.crop || 'wheat',
+        growOpts.weatherMult,
+        growOpts.isBadWeather,
+        {
+          truffleGrowMult:    growOpts.truffleGrowMult,
+          cornGrowMult:       growOpts.cornGrowMult,
+          pumpkinWeatherMult: growOpts.pumpkinWeatherMult,
+          kalbiL5:            growOpts.kalbiL5,
+          photosynthActive:   growOpts.photosynthActive,
+        }
+      );
+      const elapsed = computeEffectiveElapsed(plot, waterFactor, effectiveNow());
+      const pct = Math.min(100, (elapsed / growMs) * 100);
+
       bar.style.width   = pct + '%';
       label.textContent = crop.name;
       timer.textContent = '';
@@ -801,9 +794,8 @@ export function renderTownTab() {
       const hearts = '♥'.repeat(lvl);
       const emptyH = '♡'.repeat(Math.max(0, 5 - lvl));
 
-      const affinityInLevel = npc.affinity % 3;
-      const nextLevelAt     = lvl < 5 ? (lvl * 3) + 3 : 15;
-      const progressPct     = lvl >= 5 ? 100 : Math.round((npc.affinity / nextLevelAt) * 100);
+      const nextLevelAt  = lvl < 5 ? (lvl * 3) + 3 : 15;
+      const progressPct  = lvl >= 5 ? 100 : Math.round((npc.affinity / nextLevelAt) * 100);
 
       const activeBonus = activeBonusText(id);
       const story       = currentStoryText(id);
@@ -999,7 +991,6 @@ export function updateMerchantUI() {
     sun.style.display  = (m.active === 'mochi') ? 'flex' : 'none';
     moon.style.display = (m.active === 'moto')  ? 'flex' : 'none';
 
-    // Refresh the farm info bar since merchant effect may have changed
     updateFarmInfoBar();
 
     const outModal = el('moto-outcome-modal');
@@ -1021,7 +1012,6 @@ export function updateMerchantUI() {
 }
 
 export function tickMerchantBadge() {
-  // Keep merchant effect display synced in the farm info bar (when no toast active)
   updateFarmInfoBar();
 }
 

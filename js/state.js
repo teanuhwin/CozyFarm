@@ -326,3 +326,85 @@ export function computeEffectiveElapsed(plot, waterSpeedup, nowOverride) {
   }
   return elapsed;
 }
+
+// ── CENTRALIZED TIMER HELPERS ─────────────────────────────
+//
+// These replace the scattered local re-implementations in main.js and ui.js.
+// All timer UI (Farm Info Bar, plot toast, progress bars) must use these.
+
+/**
+ * Returns the timestamp to treat as "now" for all growth calculations.
+ * When Frozen Soil is active, time is pinned at the moment it was applied
+ * so that all progress bars and countdowns visually pause.
+ */
+export function effectiveNow() {
+  const eff = state.merchant && state.merchant.effect;
+  if (
+    eff &&
+    eff.id === 'frozen' &&
+    eff.frozenAt &&
+    (!eff.expiresAt || Date.now() < eff.expiresAt)
+  ) {
+    return eff.frozenAt;
+  }
+  return Date.now();
+}
+
+/**
+ * Returns the water-speedup divisor for a given Cinna affinity level.
+ * Cinna Lv5: 0.30 | Lv3: 0.40 | Lv1: 0.55 | base: 0.65
+ *
+ * This is the single source of truth — ui.js and main.js must NOT
+ * re-declare this inline.
+ *
+ * @param {number} cinnaLevel - affinityLevel('cinna'), 0–5
+ * @returns {number}
+ */
+export function waterSpeedupFactor(cinnaLevel) {
+  if (cinnaLevel >= 5) return 0.30;
+  if (cinnaLevel >= 3) return 0.40;
+  if (cinnaLevel >= 1) return 0.55;
+  return WATER_SPEEDUP; // 0.65
+}
+
+/**
+ * Compute the remaining milliseconds for a single planted plot.
+ *
+ * @param {object} plot        - a plot object with state === 'planted'
+ * @param {object} growOpts    - options forwarded to computeGrowMs:
+ *   { weatherMult, isBadWeather, truffleGrowMult, cornGrowMult,
+ *     pumpkinWeatherMult, kalbiL5, photosynthActive }
+ * @param {number} waterFactor - result of waterSpeedupFactor(cinnaLevel)
+ *
+ * @returns {{ effectiveMsRemaining: number, realMsRemaining: number }}
+ *   effectiveMsRemaining: growth-credit ms still needed (ignores water slow-read)
+ *   realMsRemaining:      wall-clock ms until the crop is actually done
+ */
+export function computePlotRemainingMs(plot, growOpts, waterFactor) {
+  const now = effectiveNow();
+  const growMs = computeGrowMs(
+    plot.crop || 'wheat',
+    growOpts.weatherMult,
+    growOpts.isBadWeather,
+    {
+      truffleGrowMult:    growOpts.truffleGrowMult,
+      cornGrowMult:       growOpts.cornGrowMult,
+      pumpkinWeatherMult: growOpts.pumpkinWeatherMult,
+      kalbiL5:            growOpts.kalbiL5,
+      photosynthActive:   growOpts.photosynthActive,
+    }
+  );
+
+  const elapsed = computeEffectiveElapsed(plot, waterFactor, now);
+  const effectiveMsRemaining = Math.max(0, growMs - elapsed);
+
+  // Convert effective ms → real wall-clock ms.
+  // If the plot is watered, the remaining effective time still runs at the
+  // boosted rate, so real-time = effectiveMs * waterFactor.
+  // If not yet watered, effective time == real time.
+  const realMsRemaining = plot.watered
+    ? effectiveMsRemaining * waterFactor
+    : effectiveMsRemaining;
+
+  return { effectiveMsRemaining, realMsRemaining };
+}
