@@ -151,7 +151,7 @@ export function toast(msg) {
     setFarmInfoBar(msg, true);
     farmInfoToastTimer = setTimeout(() => {
       clearFarmInfoToast();
-    }, 3000);
+    }, 6000);
   }
 
   const t = el('toast');
@@ -164,7 +164,7 @@ export function toast(msg) {
     t.classList.remove('show');
     t.style.pointerEvents = 'none';
     t.style.cursor = 'default';
-  }, 3000);
+  }, 6000);
 }
 
 export function dismissToast() {
