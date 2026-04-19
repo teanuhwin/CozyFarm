@@ -82,7 +82,7 @@ export const NPC_DATA = {
   twins: {
     name: 'Mason & Jason',
     role: 'Chaotic children. Their "projects" have become increasingly expensive and large-scale.',
-    sprite: '👫',
+    sprite: '🧑‍🤝‍🧑',
     story: [
       "We're building a fortress made entirely of kernels. It's going to be EPIC. We just need your corn.",
       "We accidentally rented a hot air balloon. The pilot wants a lot to land. It's… complicated.",
