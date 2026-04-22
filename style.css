@@ -50,7 +50,6 @@
 
 html {
   touch-action: manipulation;
-
 }
 
 body {
@@ -61,17 +60,11 @@ body {
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
-
-  /* 1. Prevents double-tap zoom on iOS and Android */
   touch-action: manipulation;
-
-  /* 2. Prevents accidental text selection on Android double-tap */
-  -webkit-user-select: none; /* Safari/Chrome/Android */
-  -moz-user-select: none;    /* Firefox */
-  -ms-user-select: none;     /* IE10+ */
-  user-select: none;         /* Standard */
-
-  /* 3. Removes the blue/gray tap highlight box on mobile */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -467,7 +460,7 @@ main {
   border-color: color-mix(in srgb, var(--red) 40%, var(--border));
 }
 
-/* ── TOAST (floating — used on non-farm tabs) ── */
+/* ── TOAST ── */
 #toast {
   position: fixed;
   top: 88px;
@@ -490,7 +483,6 @@ main {
 }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/* Hide the floating toast when the farm tab is active — messages show in the info bar instead */
 #tab-farm.active ~ * #toast,
 body:has(#tab-farm.active) #toast { display: none !important; }
 
@@ -534,7 +526,6 @@ body:has(#tab-farm.active) #toast { display: none !important; }
   background: var(--card);
 }
 
-/* Empty idle state — hide border to save visual noise */
 .farm-info-bar.farm-info-idle:empty,
 .farm-info-bar.farm-info-idle #farm-info-text:empty {
   opacity: 0;
@@ -640,7 +631,6 @@ body:has(#tab-farm.active) #toast { display: none !important; }
 .tool-stock { font-size: 11px; opacity: 0.75; }
 
 /* ── BODIE ROW ── */
-/* Outer row: Bodie zone (left 1/3) + weather card (right 2/3) */
 .bodie-row {
   display: flex;
   align-items: stretch;
@@ -648,7 +638,6 @@ body:has(#tab-farm.active) #toast { display: none !important; }
   margin-bottom: 10px;
 }
 
-/* Bodie zone: left 1/3, large tap target */
 .bodie-btn {
   flex: 0 0 calc(33.333% - 4px);
   min-width: 0;
@@ -699,9 +688,7 @@ body:has(#tab-farm.active) #toast { display: none !important; }
   transition: opacity 0.2s;
 }
 
-.bodie-label.visible {
-  opacity: 1;
-}
+.bodie-label.visible { opacity: 1; }
 
 @keyframes bodie-pulse {
   0%, 100% { box-shadow: 0 0 7px rgba(174,221,110,0.4); }
@@ -709,7 +696,6 @@ body:has(#tab-farm.active) #toast { display: none !important; }
 }
 
 /* ── WEATHER BANNER ── */
-/* Right 2/3 of the bodie-row */
 .weather-banner {
   flex: 1 1 0;
   min-width: 0;
@@ -741,8 +727,8 @@ body:has(#tab-farm.active) #toast { display: none !important; }
   text-align: right;
   line-height: 1.2;
   max-width: 85px;
-  white-space: normal;      
-  overflow-wrap: anywhere;  
+  white-space: normal;
+  overflow-wrap: anywhere;
   word-break: normal;
 }
 
@@ -1025,7 +1011,6 @@ body:has(#tab-farm.active) #toast { display: none !important; }
 }
 
 /* ── MERCHANT SYSTEM ── */
-
 .grid-meta-row {
   display: flex;
   align-items: center;
@@ -1087,8 +1072,7 @@ body:has(#tab-farm.active) #toast { display: none !important; }
 
 .modal-close-x {
   position: absolute;
-  top: 10px;
-  right: 12px;
+  top: 10px; right: 12px;
   background: none;
   border: none;
   font-size: 16px;
@@ -1105,10 +1089,7 @@ body:has(#tab-farm.active) #toast { display: none !important; }
   margin-bottom: 10px;
   padding-right: 24px;
 }
-.merchant-modal-name {
-  font-size: 18px;
-  font-weight: 800;
-}
+.merchant-modal-name { font-size: 18px; font-weight: 800; }
 .merchant-modal-cost {
   font-family: 'Silkscreen', monospace;
   font-weight: 400;
@@ -1140,24 +1121,10 @@ body:has(#tab-farm.active) #toast { display: none !important; }
   border-radius: 12px;
   padding: 10px 12px;
 }
-.merchant-item-icon {
-  font-size: 22px;
-  flex-shrink: 0;
-}
-.merchant-item-info {
-  flex: 1;
-  min-width: 0;
-}
-.merchant-item-name {
-  font-size: 13px;
-  font-weight: 800;
-  margin-bottom: 2px;
-}
-.merchant-item-desc {
-  font-size: 11px;
-  color: var(--text2);
-  line-height: 1.4;
-}
+.merchant-item-icon { font-size: 22px; flex-shrink: 0; }
+.merchant-item-info { flex: 1; min-width: 0; }
+.merchant-item-name { font-size: 13px; font-weight: 800; margin-bottom: 2px; }
+.merchant-item-desc { font-size: 11px; color: var(--text2); line-height: 1.4; }
 .merchant-riddle-row .good-side { color: var(--accent2); margin-top: 2px; }
 .merchant-riddle-row .bad-side  { color: var(--red);     margin-top: 2px; }
 
@@ -1165,10 +1132,7 @@ body:has(#tab-farm.active) #toast { display: none !important; }
   display: flex;
   gap: 8px;
 }
-.merchant-modal-footer .btn {
-  flex: 1;
-  font-size: 11px;
-}
+.merchant-modal-footer .btn { flex: 1; font-size: 11px; }
 .btn.danger {
   background: var(--bg3);
   border-color: var(--red);
@@ -1181,3 +1145,86 @@ body:has(#tab-farm.active) #toast { display: none !important; }
   padding: 24px 20px 20px;
   text-align: center;
 }
+
+/* ── TOWN PRIDE HEADER ── */
+.pride-header {
+  background: color-mix(in srgb, var(--gold) 8%, var(--card));
+  border: 1.5px solid color-mix(in srgb, var(--gold) 40%, var(--border));
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 4px;
+}
+
+.pride-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.pride-icon { font-size: 20px; }
+
+.pride-title {
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--gold2);
+  flex: 1;
+}
+
+.pride-level-badge {
+  font-family: 'Silkscreen', monospace;
+  font-size: 11px;
+  font-weight: 400;
+  background: color-mix(in srgb, var(--gold) 20%, var(--bg3));
+  border: 1px solid var(--gold);
+  border-radius: 6px;
+  padding: 2px 6px;
+  color: var(--gold2);
+}
+
+.pride-level-badge.pride-max {
+  background: linear-gradient(135deg, #7c5c00, #b8860b);
+  border-color: var(--gold2);
+  color: #fff8dc;
+  animation: pride-glow 2s ease-in-out infinite;
+}
+
+@keyframes pride-glow {
+  0%, 100% { box-shadow: 0 0 4px rgba(255,232,122,0.3); }
+  50%       { box-shadow: 0 0 12px rgba(255,232,122,0.7); }
+}
+
+.pride-pts {
+  font-size: 12px;
+  color: var(--gold);
+  font-family: 'Silkscreen', monospace;
+  font-weight: 400;
+}
+
+.pride-perk {
+  font-size: 11px;
+  color: var(--text2);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+/* ── GRAND BANQUET / POT CROP ROW ── */
+.pot-crop-row {
+  background: var(--bg2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+}
+
+/* ── HARVEST RUSH ── */
+/* Tap buttons already use .btn, but we make them taller and more tappable */
+[data-rush-crop] {
+  border-radius: 14px;
+  line-height: 1.4;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.1s, background 0.1s;
+}
+[data-rush-crop]:active { transform: scale(0.92); }
