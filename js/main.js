@@ -10,7 +10,6 @@ import {
   barnCap, totalBarnContents, expandCost, initPlots,
   currentWeatherMultiplier, pickWeather, formatTime, migrateState,
   computeGrowMs, computeEffectiveElapsed,
-  effectiveNow, waterSpeedupFactor, computePlotRemainingMs,
 } from './state.js';
 
 import {
@@ -42,7 +41,25 @@ import {
   updateBodieUI, renderBodieBook, updateFarmInfoBar,
 } from './ui.js';
 
+import {
+  tickBanquet, tickRushTimer, deliverToPot, rushTap, migrateBanquet, isEndgameActive,
+} from './banquet.js';
+
+import {
+  prideLevelFromPoints, goldenYieldPerk, rollPrideInstantGrow,
+  waterSpeedupFactor,
+} from './logic.js';
+
 import { getActiveTip, markBodieRead, isBodieUnread, refreshBodieQueue } from './bodie.js';
+
+// Returns the ms timestamp to use as "now" for grow calculations.
+function effectiveNow() {
+  const eff = state.merchant && state.merchant.effect;
+  if (eff && eff.id === 'frozen' && eff.frozenAt && (!eff.expiresAt || Date.now() < eff.expiresAt)) {
+    return eff.frozenAt;
+  }
+  return Date.now();
+}
 
 // ── INTERACTION STATE ─────────────────────────────────────
 let selectedCrop = 'wheat';
@@ -52,24 +69,6 @@ let lastHarvestTime = 0;
 
 function affinityLevelFor(npcId) {
   return Math.min(5, Math.floor((state.npcs[npcId]?.affinity || 0) / 3));
-}
-
-// ── BUILD GROW OPTS FOR CURRENT STATE ─────────────────────
-// Single helper so main.js, tick(), and showPlotOptions() all use
-// identical inputs to computeGrowMs / computePlotRemainingMs.
-function buildGrowOpts() {
-  const weatherMult  = currentWeatherMultiplier();
-  const curWeather   = (state.weather && state.weather.current) || 'clear';
-  const isBadWeather = ['rain', 'thunder', 'flood'].includes(curWeather);
-  return {
-    weatherMult,
-    isBadWeather,
-    truffleGrowMult:    getTruffleGrowMult(),
-    cornGrowMult:       getCornGrowMult(),
-    pumpkinWeatherMult: getPumpkinWeatherMult(),
-    kalbiL5:            affinityLevelFor('kalbi') >= 5,
-    photosynthActive:   isPhotosynthActive(),
-  };
 }
 
 // ── TOOL / CROP SELECTION ─────────────────────────────────
@@ -92,15 +91,12 @@ function applyWaterSpeedup(plot) {
 function clickBodie() {
   dismissToast();
   refreshBodieQueue();
-
   const tip = getActiveTip();
   if (!tip) return;
-
   toast(`🐾 ${tip.text}`);
   markBodieRead();
   refreshBodieQueue();
   updateBodieUI();
-
   const settingsPanel = el('tab-settings');
   if (settingsPanel && settingsPanel.classList.contains('active')) {
     renderBodieBook();
@@ -113,10 +109,10 @@ function clickPlot(idx) {
 
   if (selectedTool === 'water') {
     if (plot.state === 'flooded') { toast('🌊 This plot is flooded!'); return; }
-    if (plot.state === 'ready') { harvestPlot(idx); return; }
+    if (plot.state === 'ready')   { harvestPlot(idx); return; }
     if (plot.state !== 'planted') { toast('Plant a crop first!'); return; }
-    if (plot.watered) { toast('Already watered!'); return; }
-    if ((state.water || 0) < 1) { toast('No water! Buy some in the Shop.'); return; }
+    if (plot.watered)             { toast('Already watered!'); return; }
+    if ((state.water || 0) < 1)   { toast('No water! Buy some in the Shop.'); return; }
     state.water--;
     const areaSize = getWaterAreaSize();
     if (areaSize > 0) {
@@ -151,11 +147,11 @@ function clickPlot(idx) {
   }
 
   if (selectedTool === 'fert') {
-    if (plot.state === 'flooded') { toast('🌊 This plot is flooded!'); return; }
-    if (plot.state === 'ready') { harvestPlot(idx); return; }
-    if (plot.state !== 'planted') { toast('Plant a crop first!'); return; }
-    if (plot.fertilized) { toast('Already fertilized!'); return; }
-    if ((state.fertilizer || 0) < 1) { toast('No fertilizer! Buy some in the Shop.'); return; }
+    if (plot.state === 'flooded')   { toast('🌊 This plot is flooded!'); return; }
+    if (plot.state === 'ready')     { harvestPlot(idx); return; }
+    if (plot.state !== 'planted')   { toast('Plant a crop first!'); return; }
+    if (plot.fertilized)            { toast('Already fertilized!'); return; }
+    if ((state.fertilizer || 0) < 1){ toast('No fertilizer! Buy some in the Shop.'); return; }
     state.fertilizer--;
     plot.fertilized = true;
     state.stats.totalFertilized = (state.stats.totalFertilized || 0) + 1;
@@ -187,14 +183,23 @@ function clickPlot(idx) {
     plot.plantedAt  = Date.now();
     plot.watered    = false;
     plot.fertilized = false;
+
+    // Twins L5: 60% chance corn pre-watered
     if (selectedCrop === 'corn' && affinityLevelFor('twins') >= 5 && Math.random() < 0.60) {
-      plot.watered  = true;
+      plot.watered   = true;
       plot.wateredAt = Date.now();
     }
+    // Twins L4: 10% instant grow
     if (selectedCrop === 'corn' && rollCornInstant()) {
       plot.state = 'ready';
       toast('⚡ Chaos Corn! This one grew instantly!');
     }
+    // Town Pride L5: 25% instant grow on any plant
+    if (plot.state !== 'ready' && rollPrideInstantGrow()) {
+      plot.state = 'ready';
+      toast('🌟 Town Pride! Instant grow!');
+    }
+
     saveState();
     renderPlot(idx);
     updateHeader();
@@ -209,15 +214,31 @@ function clickPlot(idx) {
 }
 
 function showPlotOptions(idx) {
-  const plot       = state.plots[idx];
-  const growOpts   = buildGrowOpts();
-  const cinnaLvl   = affinityLevelFor('cinna');
-  const waterFactor = waterSpeedupFactor(cinnaLvl);
+  const plot           = state.plots[idx];
+  const cropKey        = plot.crop || 'wheat';
+  const weatherMult    = currentWeatherMultiplier();
+  const currentWeather = (state.weather && state.weather.current) || 'clear';
+  const isBadWeather   = ['rain', 'thunder', 'flood'].includes(currentWeather);
+  const growMs = computeGrowMs(cropKey, weatherMult, isBadWeather, {
+    truffleGrowMult:    getTruffleGrowMult(),
+    cornGrowMult:       getCornGrowMult(),
+    pumpkinWeatherMult: getPumpkinWeatherMult(),
+    kalbiL5:            affinityLevelFor('kalbi') >= 5,
+    photosynthActive:   isPhotosynthActive(),
+  });
+  const waterSpeedup = getWaterSpeedup() ?? WATER_SPEEDUP;
+  const effectiveElapsed = computeEffectiveElapsed(plot, waterSpeedup, effectiveNow());
 
-  const { realMsRemaining } = computePlotRemainingMs(plot, growOpts, waterFactor);
-  const remaining = Math.ceil(realMsRemaining / 1000);
+  const remainingEffectiveMs = Math.max(0, growMs - effectiveElapsed);
+  let remainingRealMs = remainingEffectiveMs;
+  if (plot.watered) {
+    const cinnaLvl    = affinityLevelFor('cinna');
+    const waterFactor = cinnaLvl >= 5 ? 0.30 : cinnaLvl >= 3 ? 0.40 : cinnaLvl >= 1 ? 0.55 : 0.65;
+    remainingRealMs   = remainingEffectiveMs * waterFactor;
+  }
+  const remaining = Math.ceil(remainingRealMs / 1000);
 
-  const mods = [];
+  const mods    = [];
   if (plot.watered)    mods.push('💧 watered');
   if (plot.fertilized) mods.push('🌿 fertilized');
   const modStr  = mods.length ? ` · ${mods.join(' · ')}` : '';
@@ -264,12 +285,20 @@ function harvestPlot(idx) {
       }
     }
 
-    if (cropKey === 'corn') yieldAmt += getCornYieldBonus();
-
+    if (cropKey === 'corn')    yieldAmt += getCornYieldBonus();
     if (cropKey === 'truffle') yieldAmt = Math.max(getTruffleMinYield(), yieldAmt);
 
     if (cropKey === 'pumpkin' && (plot.bonusYield || 0) > 0) {
       yieldAmt += plot.bonusYield;
+    }
+
+    // ── Town Pride: Golden Yield perk ──────────────────────
+    const prideLevel = prideLevelFromPoints(state.pridePoints || 0);
+    const { chance: prideChance, bonus: prideBonus } = goldenYieldPerk(prideLevel);
+    if (prideChance > 0 && Math.random() < prideChance) {
+      yieldAmt += prideBonus;
+      // small visual hint — won't spam because it replaces the main toast
+      // actual toast assembled below with golden emoji
     }
   }
 
@@ -278,11 +307,12 @@ function harvestPlot(idx) {
   if (!weightless && space <= 0) { toast('🏚️ Barn full! Sell some crops first.'); return; }
 
   const partialHarvest = !weightless && yieldAmt > space;
-  const actualHarvest = weightless ? yieldAmt : Math.min(yieldAmt, space);
-  const takenAmt = actualHarvest;
+  const actualHarvest  = weightless ? yieldAmt : Math.min(yieldAmt, space);
+  const takenAmt       = actualHarvest;
 
   state[cropKey] = (state[cropKey] || 0) + takenAmt;
 
+  // Maru L2: 10% chance bonus truffle when harvesting pumpkin
   if (cropKey === 'pumpkin' && affinityLevelFor('maru') >= 2 && Math.random() < 0.10) {
     const truffleSpace = barnCap() - totalBarnContents();
     if (truffleSpace > 0) {
@@ -291,6 +321,7 @@ function harvestPlot(idx) {
     }
   }
 
+  // Maru L5: queue +1 on adjacent pumpkins
   let maruBonus = 0;
   if (cropKey === 'pumpkin' && affinityLevelFor('maru') >= 5) {
     const harvestRow = Math.floor(idx / state.cols);
@@ -299,8 +330,8 @@ function harvestPlot(idx) {
       if (i === idx) return;
       const pRow = Math.floor(i / state.cols);
       const pCol = i % state.cols;
-      const rowDist = Math.abs(pRow - harvestRow);
-      const colDist = Math.abs(pCol - harvestCol);
+      const rowDist  = Math.abs(pRow - harvestRow);
+      const colDist  = Math.abs(pCol - harvestCol);
       const wrapsEdge = (pCol === 0 && harvestCol === state.cols - 1) ||
                         (pCol === state.cols - 1 && harvestCol === 0);
       const isAdjacent = rowDist <= 1 && colDist <= 1 && !wrapsEdge;
@@ -311,6 +342,7 @@ function harvestPlot(idx) {
     });
   }
 
+  // Gloves
   let seedReturned = false;
   const curGlovesUses = getGlovesUses();
   const glovesChance  = isBarrenEarth() ? 0 : (getGlovesChance() !== null ? getGlovesChance() : GLOVES_CHANCE);
@@ -344,8 +376,11 @@ function harvestPlot(idx) {
     plot.yieldRemaining = yieldAmt - takenAmt;
   }
 
-  state.stats.totalHarvests   = (state.stats.totalHarvests  || 0) + takenAmt;
-  if (cropKey === 'wheat')   state.stats.wheatHarvests  = (state.stats.wheatHarvests  || 0) + takenAmt;
+  // ── Stat tracking ─────────────────────────────────────
+  state.stats.totalHarvests = (state.stats.totalHarvests || 0) + takenAmt;
+  if (cropKey === 'wheat')   state.stats.wheatHarvests   = (state.stats.wheatHarvests   || 0) + takenAmt;
+  if (cropKey === 'corn')    state.stats.cornHarvests    = (state.stats.cornHarvests    || 0) + takenAmt;
+  if (cropKey === 'pumpkin') state.stats.pumpkinHarvests = (state.stats.pumpkinHarvests || 0) + takenAmt;
   if (cropKey === 'truffle') state.stats.truffleHarvests = (state.stats.truffleHarvests || 0) + takenAmt;
 
   saveState();
@@ -506,7 +541,7 @@ function buyBigFertilizer() {
 function buyGloves() {
   if ((state.stats.wheatHarvests || 0) < 20) { toast('🧤 Harvest 20 wheat first to unlock Gloves!'); return; }
   if (state.glovesDurability > 0) { toast('Gloves still have durability!'); return; }
-  if (state.coins < GLOVES_COST) { toast(`Need ${GLOVES_COST}🪙!`); return; }
+  if (state.coins < GLOVES_COST)  { toast(`Need ${GLOVES_COST}🪙!`); return; }
   state.coins -= GLOVES_COST;
   const uses = getGlovesUses();
   state.glovesDurability = uses === Infinity ? 9999 : (uses !== null ? uses : GLOVES_USES);
@@ -548,6 +583,9 @@ function expandGrid(type) {
 
 // ── BEG SYSTEM ────────────────────────────────────────────
 function begForSeeds() {
+  // Track beg stat
+  state.stats.timesBegged = (state.stats.timesBegged || 0) + 1;
+
   state.begTaps = (state.begTaps || 0) + 1;
   if (state.begTaps >= 10) {
     state.wheatSeeds = (state.wheatSeeds || 0) + 1;
@@ -556,6 +594,7 @@ function begForSeeds() {
     updateHeader(); updateFarmToolbar(selectedCrop, selectedTool); updateBegZone();
     toast('🙏 A kind stranger gave you 1 wheat seed!');
     updateBodieUI();
+    checkAchievements();
   } else {
     saveState();
     const prog = el('beg-progress');
@@ -680,7 +719,7 @@ function doFloodStart() {
   state.stats.cropsLostToWeather = (state.stats.cropsLostToWeather || 0) + lost;
   state.stats.floodSurvived      = (state.stats.floodSurvived      || 0) + 1;
   const immuneMsg = wheatImmune ? ' (Wheat survived — Kalbi!)' : '';
-  const lostMsg = lost > 0 ? ` ${lost} crop${lost > 1 ? 's' : ''} lost.` : '';
+  const lostMsg   = lost > 0 ? ` ${lost} crop${lost > 1 ? 's' : ''} lost.` : '';
   toast(`🌊 Flood! Row ${row + 1} submerged for the hour!${lostMsg}${immuneMsg}`);
   renderGrid(); checkAchievements();
 }
@@ -734,12 +773,16 @@ function tick() {
   tickMerchants();
   tickMerchantBadge();
   tickTownCooldowns();
+  tickBanquet();
+  tickRushTimer();
 
   refreshBodieQueue();
   updateBodieUI();
   updateFarmInfoBar();
 
-  const growOpts = buildGrowOpts();
+  const weatherMult    = currentWeatherMultiplier();
+  const currentWeather = (state.weather && state.weather.current) || 'clear';
+  const isBadWeather   = ['rain', 'thunder', 'flood'].includes(currentWeather);
   let changed = false;
 
   state.plots.forEach((plot, i) => {
@@ -747,11 +790,17 @@ function tick() {
     if (plot.state === 'planted') {
       if (isTimerFrozen()) { renderPlot(i); return; }
 
-      const cinnaLvl   = affinityLevelFor('cinna');
-      const waterFactor = waterSpeedupFactor(cinnaLvl);
-      const { effectiveMsRemaining } = computePlotRemainingMs(plot, growOpts, waterFactor);
+      const cropKey = plot.crop || 'wheat';
+      const growMs  = computeGrowMs(cropKey, weatherMult, isBadWeather, {
+        truffleGrowMult:    getTruffleGrowMult(),
+        cornGrowMult:       getCornGrowMult(),
+        pumpkinWeatherMult: getPumpkinWeatherMult(),
+        kalbiL5:            affinityLevelFor('kalbi') >= 5,
+        photosynthActive:   isPhotosynthActive(),
+      });
+      const elapsed = computeEffectiveElapsed(plot, getWaterSpeedup() ?? WATER_SPEEDUP, effectiveNow());
 
-      if (effectiveMsRemaining <= 0) {
+      if (elapsed >= growMs) {
         plot.state = 'ready';
         changed    = true;
         if (!notifiedPlots.has(i)) {
@@ -785,37 +834,29 @@ function doReset() {
     weather: { current: 'clear', changedAt: Date.now(), lastRainAt: 0, lastThunderAt: 0, floodedRow: -1 },
     unlockedAchievements: [],
     stats: {
-      totalHarvests: 0, wheatHarvests: 0, totalWatered: 0, totalFertilized: 0,
+      totalHarvests: 0, wheatHarvests: 0, cornHarvests: 0, pumpkinHarvests: 0,
+      truffleHarvests: 0, totalWatered: 0, totalFertilized: 0,
       sellActions: 0, cropsLostToWeather: 0, rainWateredPlots: 0,
-      thunderSurvived: 0, floodSurvived: 0, glovesUses: 0,
-      truffleHarvests: 0, weatherCounts: {},
-      everBoughtWater: false, everBoughtFert: false,
+      thunderSurvived: 0, floodSurvived: 0, glovesUses: 0, timesBegged: 0,
+      weatherCounts: {}, everBoughtWater: false, everBoughtFert: false,
     },
     begTaps: 0,
-    bodieSeenTips: [],
-    bodieQueue: [],
-    bodieCollectedTips: [],
-    bodieLastReadTip: null,
-    npcs: {},
-    unlockedNpcs: ['kimchi'],
+    bodieSeenTips: [], bodieQueue: [], bodieCollectedTips: [], bodieLastReadTip: null,
+    npcs: {}, unlockedNpcs: ['kimchi'],
+    pridePoints: 0, prideLevel: 0,
+    banquet: null,
   });
   selectedCrop = 'wheat';
   selectedTool = 'plant';
   migrateNpcs();
+  migrateBanquet();
   initPlots();
   saveState();
-  renderGrid();
-  updateHeader();
-  updateShopUI();
+  renderGrid(); updateHeader(); updateShopUI();
   updateFarmToolbar(selectedCrop, selectedTool);
-  updateWeatherBanner();
-  updateHint();
-  updateBegZone();
-  updateTownVisibility();
-  updateTownBadge();
-  updateMerchantUI();
-  updateBodieUI();
-  updateFarmInfoBar();
+  updateWeatherBanner(); updateHint(); updateBegZone();
+  updateTownVisibility(); updateTownBadge();
+  updateMerchantUI(); updateBodieUI(); updateFarmInfoBar();
   closeModal();
   toast('🌱 Farm reset! Starting fresh.');
 }
@@ -847,21 +888,14 @@ function uploadSave(file) {
       Object.assign(state, parsed);
       migrateState();
       migrateNpcs();
+      migrateBanquet();
       initPlots();
       saveState();
-      renderGrid();
-      updateHeader();
-      updateShopUI();
+      renderGrid(); updateHeader(); updateShopUI();
       updateFarmToolbar(selectedCrop, selectedTool);
-      updateWeatherBanner();
-      updateHint();
-      updateBegZone();
-      updateTownVisibility();
-      updateTownBadge();
-      updateMerchantUI();
-      checkAchievements();
-      updateBodieUI();
-      updateFarmInfoBar();
+      updateWeatherBanner(); updateHint(); updateBegZone();
+      updateTownVisibility(); updateTownBadge();
+      updateMerchantUI(); checkAchievements(); updateBodieUI(); updateFarmInfoBar();
       toast('✅ Save loaded! Welcome back.');
     } catch (err) {
       toast('❌ Could not read save file.');
@@ -871,15 +905,83 @@ function uploadSave(file) {
 }
 
 // ── EVENT DELEGATION ──────────────────────────────────────
+
+// Dedicated Town Tab handler for Banquet/Rush high-frequency input
+function wireTownEvents() {
+  const npcList = document.getElementById('npc-list');
+
+  npcList.addEventListener('click', e => {
+    // NPC deliver
+    const deliverBtn = e.target.closest('[data-deliver]');
+    if (deliverBtn) { npcDeliver(deliverBtn.dataset.deliver); return; }
+
+    // Communal Pot delivery
+    const potBtn = e.target.closest('[data-pot-deliver]');
+    if (potBtn) {
+      deliverToPot(potBtn.dataset.potDeliver);
+      import('./ui.js').then(({ renderTownTab: rtt, updateHeader: uh, updateShopUI: us }) => {
+        rtt(); uh(); us();
+      });
+      return;
+    }
+
+    // Harvest Rush crop tap
+    const rushBtn = e.target.closest('[data-rush-crop]');
+    if (rushBtn) {
+      const result = rushTap(rushBtn.dataset.rushCrop);
+      handleRushResult(result);
+      return;
+    }
+
+    // Buy permit
+    const permitBtn = e.target.closest('[data-buy-permit]');
+    if (permitBtn) {
+      import('./banquet.js').then(({ buyPermit }) => {
+        if (buyPermit()) {
+          import('./ui.js').then(({ renderTownTab: rtt, updateHeader: uh, updateShopUI: us }) => {
+            rtt(); uh(); us();
+          });
+        }
+      });
+      return;
+    }
+  });
+}
+
+function handleRushResult(result) {
+  import('./ui.js').then(({ renderTownTab: rtt }) => {
+    switch (result) {
+      case 'continue':
+        rtt();
+        break;
+      case 'stage_clear':
+        toast('✅ Stage cleared! Next pattern…');
+        rtt();
+        break;
+      case 'win':
+        toast('🎊 You nailed it! The Banquet is a success!');
+        rtt();
+        break;
+      case 'fail':
+        toast('❌ Wrong crop! Re-fill the Communal Pot to try again.');
+        rtt();
+        break;
+      case 'expired':
+        toast('⏰ Time\'s up! Re-fill the Communal Pot to try again.');
+        rtt();
+        break;
+      default:
+        break;
+    }
+  });
+}
+
 function wireEvents() {
   document.getElementById('farm-grid').addEventListener('plot-click', e => {
     clickPlot(e.detail.idx);
   });
 
-  document.getElementById('npc-list').addEventListener('click', e => {
-    const btn = e.target.closest('[data-deliver]');
-    if (btn) npcDeliver(btn.dataset.deliver);
-  });
+  wireTownEvents();
 
   document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab, btn));
@@ -971,20 +1073,28 @@ function init() {
   loadSettings();
   loadState();
   migrateState();
+  migrateBanquet();
 
   applyTheme();
 
   el('setting-dark').checked    = settings.dark;
   el('setting-vibrate').checked = settings.vibrate;
 
-  // Catch-up: mark any plots that finished while the tab was closed
-  const catchUpGrowOpts = buildGrowOpts();
+  const catchUpWeatherMult = currentWeatherMultiplier();
+  const catchUpWeather     = (state.weather && state.weather.current) || 'clear';
+  const catchUpBadWeather  = ['rain', 'thunder', 'flood'].includes(catchUpWeather);
   state.plots.forEach(plot => {
     if (plot.state === 'planted') {
-      const cinnaLvl    = affinityLevelFor('cinna');
-      const waterFactor = waterSpeedupFactor(cinnaLvl);
-      const { effectiveMsRemaining } = computePlotRemainingMs(plot, catchUpGrowOpts, waterFactor);
-      if (effectiveMsRemaining <= 0) plot.state = 'ready';
+      const cropKey = plot.crop || 'wheat';
+      const growMs  = computeGrowMs(cropKey, catchUpWeatherMult, catchUpBadWeather, {
+        truffleGrowMult:    getTruffleGrowMult(),
+        cornGrowMult:       getCornGrowMult(),
+        pumpkinWeatherMult: getPumpkinWeatherMult(),
+        kalbiL5:            affinityLevelFor('kalbi') >= 5,
+        photosynthActive:   isPhotosynthActive(),
+      });
+      const elapsed = computeEffectiveElapsed(plot, getWaterSpeedup() ?? WATER_SPEEDUP);
+      if (elapsed >= growMs) plot.state = 'ready';
     }
   });
 

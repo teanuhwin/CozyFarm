@@ -82,7 +82,7 @@ export const NPC_DATA = {
   twins: {
     name: 'Mason & Jason',
     role: 'Chaotic children. Their "projects" have become increasingly expensive and large-scale.',
-    sprite: '🧑‍🤝‍🧑',
+    sprite: '👫',
     story: [
       "We're building a fortress made entirely of kernels. It's going to be EPIC. We just need your corn.",
       "We accidentally rented a hot air balloon. The pilot wants a lot to land. It's… complicated.",
@@ -180,7 +180,6 @@ export const NPC_DATA = {
 export const NPC_ORDER = ['kimchi', 'kalbi', 'ellie', 'twins', 'maru', 'cinna', 'kola'];
 export const CROP_EMOJI = { wheat:'🌾', corn:'🌽', pumpkin:'🎃', truffle:'🍄' };
 
-// Lifetime coins required for merchants to appear
 export const MERCHANT_UNLOCK_COINS = 10000;
 
 const NPC_COOLDOWN_MIN = 1 * 60 * 1000;
@@ -191,8 +190,6 @@ const NPC_COOLDOWN_UNLOCKED_MAX = 15 * 60 * 1000;
 const REQ_CROP_MIN = 30, REQ_CROP_MAX = 80;
 const CAPSTONE_COIN_REWARD = 15000;
 const CAPSTONE_RESOURCE_AMT = 100;
-
-// ── AFFINITY HELPERS ──────────────────────────────────────
 
 export function affinityLevel(npcId) {
   return Math.min(5, Math.floor((state.npcs[npcId]?.affinity || 0) / 3));
@@ -213,8 +210,6 @@ export function currentStoryText(npcId) {
   const storyIdx = Math.min(4, Math.floor(aff / 3));
   return NPC_DATA[npcId]?.story[storyIdx] || '';
 }
-
-// ── CORE HELPERS ──────────────────────────────────────────
 
 export function isTownUnlocked() {
   return state.rows >= 6 && state.cols >= 6 && state.barnLevel >= 3;
@@ -239,7 +234,6 @@ export function generateRequest(npcId) {
   const npcState = state.npcs[npcId];
   const npc = NPC_DATA[npcId];
 
-  // Capstone: affinity == 14 → next completion hits 15 (max level 5)
   if (npcState.affinity === 14) {
     return generateCapstoneRequest(npcId);
   }
@@ -268,7 +262,6 @@ export function generateRequest(npcId) {
   return req;
 }
 
-// Specialty crop each NPC requests for their capstone
 const CAPSTONE_CROP_MAP = {
   kimchi: 'corn', kalbi: 'wheat', ellie: 'truffle',
   twins: 'corn', maru: 'pumpkin', cinna: 'wheat', kola: 'truffle',
@@ -279,25 +272,19 @@ function generateCapstoneRequest(npcId) {
   const coinCost = CAPSTONE_COIN_COSTS[npcId] || CAPSTONE_COIN_REWARD;
   return {
     type: 'combo', cropKey, crop: CAPSTONE_RESOURCE_AMT, coins: coinCost, isCapstone: true,
-    text: `⭐ FINAL REQUEST: This is it — everything I've been building toward. I need 100 ${CROP_EMOJI[cropKey]} and ${coinCost.toLocaleString()} 🪙. What comes next will stay with you forever.`,
+    text: `⭐ FINAL REQUEST: This is it — everything I've been building toward. I need 100 ${CROP_EMOJI[cropKey] || ''} and ${coinCost.toLocaleString()} 🪙. What comes next will stay with you forever.`,
   };
 }
 
-/**
- * Unlock the next NPC in order, but only if the previous NPC has
- * at least 3 affinity points (i.e. 3 quests fulfilled).
- */
 function tryUnlockNextNpc() {
   const unlocked = state.unlockedNpcs || ['kimchi'];
   const next = NPC_ORDER.find(id => !unlocked.includes(id));
   if (!next) return;
 
-  // Find the NPC that was just before `next` in the order
   const prevIdx = NPC_ORDER.indexOf(next) - 1;
   if (prevIdx >= 0) {
     const prevId = NPC_ORDER[prevIdx];
     const prevAffinity = state.npcs[prevId]?.affinity || 0;
-    // Require at least 3 completed quests (affinity >= 3) before unlocking next
     if (prevAffinity < 3) return;
   }
 
@@ -314,15 +301,13 @@ export function canFulfill(npcId) {
   return hasCoins && hasCrop;
 }
 
-// ── ACTIONS ───────────────────────────────────────────────
-
 export function tickNpcs() {
   if (!isTownUnlocked()) return;
   migrateNpcs();
   let changed = false;
   unlockedNpcIds().forEach(id => {
     const npc = state.npcs[id];
-    if (npc.affinity >= 15) return; // maxed out
+    if (npc.affinity >= 15) return;
     if (!npc.request && Date.now() >= npc.nextRequestAt) {
       npc.request = generateRequest(id);
       changed = true;
@@ -365,7 +350,7 @@ export function deliverRequest(npcId) {
   npc.affinity = Math.min(15, npc.affinity + 1);
   npc.request  = null;
 
-  const newLevel = Math.min(5, Math.floor(npc.affinity / 3));
+  const newLevel  = Math.min(5, Math.floor(npc.affinity / 3));
   const leveledUp = newLevel > prevLevel;
 
   const allUnlocked = (state.unlockedNpcs || []).length >= NPC_ORDER.length;
@@ -389,7 +374,7 @@ export function deliverRequest(npcId) {
   }
 }
 
-// ── STAT GETTERS (consumed by main.js) ───────────────────
+// ── STAT GETTERS ──────────────────────────────────────────
 
 export function getGlovesUses() {
   const lvl = affinityLevel('kimchi');
@@ -455,7 +440,6 @@ export function getCornGrowMult() {
   return 1.0;
 }
 
-/** Roll the L4 10% instant-grow chance once. Call only at plant time. */
 export function rollCornInstant() {
   return affinityLevel('twins') >= 4 && Math.random() < 0.10;
 }
@@ -486,11 +470,10 @@ export function getWaterHoseCost(base) {
   return base;
 }
 
-/** Returns the radius of single-water area effect (0 = just this plot, 1 = 3x3) */
 export function getWaterAreaSize() {
   return affinityLevel('cinna') >= 5 ? 1 : 0;
 }
-/** @deprecated use getWaterAreaSize */
+
 export function getWaterHoseAreaBoost() {
   return affinityLevel('cinna') >= 5;
 }
@@ -524,7 +507,6 @@ export function getWheatWeatherImmune() {
   return affinityLevel('kalbi') >= 5;
 }
 
-// F. Scaled capstone coin costs per NPC (later NPCs = higher cost)
 export const CAPSTONE_COIN_COSTS = {
   kimchi: 15000,
   kalbi:  15000,

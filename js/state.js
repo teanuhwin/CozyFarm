@@ -44,27 +44,31 @@ export const WATER_UNLOCK_COINS = 40;
 export const FERT_UNLOCK_COINS  = 80;
 
 export const ACHIEVEMENTS = [
-  { id:'first_harvest',   icon:'🌾', name:'First Harvest',   desc:'Harvest your first crop',          check: s => (s.stats.totalHarvests||0) >= 1 },
-  { id:'harvest_10',      icon:'🧺', name:'Busy Hands',      desc:'Harvest 100 crops total',           check: s => (s.stats.totalHarvests||0) >= 100 },
-  { id:'harvest_100',     icon:'🏆', name:'Century Farmer',  desc:'Harvest 1000 crops total',          check: s => (s.stats.totalHarvests||0) >= 1000 },
-  { id:'harvest_10000',   icon:'🌾', name:'Legendary Farmer', desc:'Harvest 10,000 crops. Wow',        check: s => (s.stats.totalHarvests||0) >= 10000 },
-  { id:'earn_100',        icon:'🪙', name:'Pocket Change',   desc:'Earn 100 coins lifetime',          check: s => (s.lifetimeCoins||0) >= 100 },
-  { id:'earn_1000',       icon:'💰', name:'Golden Harvest',  desc:'Earn 1,000 coins lifetime',        check: s => (s.lifetimeCoins||0) >= 1000 },
-  { id:'earn_10000',      icon:'🤑', name:'Truffle Tycoon',    desc:'Earn 10,000 coins lifetime',         check: s => (s.lifetimeCoins||0) >= 10000 },
-  { id:'earn_100000',     icon:'🏅', name:'High Roller',       desc:'Earn 100,000 coins lifetime',        check: s => (s.lifetimeCoins||0) >= 100000 },
-  { id:'earn_500000',     icon:'💰', name:'Half-Millionaire',  desc:'Earn 500,000 coins lifetime',        check: s => (s.lifetimeCoins||0) >= 500000 },
-  { id:'earn_1000000',    icon:'💎', name:'Millionaire',        desc:'Earn 1,000,000 coins lifetime',      check: s => (s.lifetimeCoins||0) >= 1000000 },
-  { id:'earn_5000000',    icon:'👑', name:'Legendary Tycoon',  desc:'5,000,000 coins. Sheeeesh',      check: s => (s.lifetimeCoins||0) >= 5000000 },
-  { id:'survive_thunder', icon:'⛈️', name:'Storm Survivor',  desc:'Survive a thunderstorm',           check: s => (s.stats.thunderSurvived||0) >= 1 },
-  { id:'survive_flood',   icon:'🌊', name:'Flood Survivor',  desc:'Survive a flood',                  check: s => (s.stats.floodSurvived||0) >= 1 },
-  { id:'rain_watered',    icon:'🌧️', name:'Free Water',      desc:'Have plots watered by rain',       check: s => (s.stats.rainWateredPlots||0) >= 1 },
-  { id:'full_grid',       icon:'🏡', name:'Full House',      desc:'Fill every plot at once',          check: s => s.plots.length > 0 && s.plots.every(p=>p.state!=='empty') },
-  { id:'gloves_uses',     icon:'🧤', name:'Green Thumb',     desc:'Use gloves 20 times',              check: s => (s.stats.glovesUses||0) >= 20 },
-  { id:'truffle_harvest', icon:'🍄', name:'Truffle Hunter',  desc:'Harvest your first Truffle',       check: s => (s.stats.truffleHarvests||0) >= 1 },
-  { id:'expand_max',      icon:'🗺️', name:'Land Baron',      desc:'Reach a 4×4 farm or larger',      check: s => s.rows >= 4 && s.cols >= 4 },
-  { id:'lost_to_weather', icon:'💀', name:"Nature's Wrath",  desc:'Lose 5+ crops to weather',         check: s => (s.stats.cropsLostToWeather||0) >= 5 },
-  { id:'sell_10_times',   icon:'🏪', name:'Market Regular',  desc:'Sell crops 10 times',              check: s => (s.stats.sellActions||0) >= 10 },
-  { id:'watered_20',      icon:'💧', name:'Diligent Farmer', desc:'Water 20 individual plots',        check: s => (s.stats.totalWatered||0) >= 20 },
+  { id:'first_harvest',   icon:'🌾', name:'First Harvest',    desc:'Harvest your first crop',           check: s => (s.stats.totalHarvests||0) >= 1 },
+  { id:'harvest_10',      icon:'🧺', name:'Busy Hands',       desc:'Harvest 100 crops total',           check: s => (s.stats.totalHarvests||0) >= 100 },
+  { id:'harvest_100',     icon:'🏆', name:'Century Farmer',   desc:'Harvest 1000 crops total',          check: s => (s.stats.totalHarvests||0) >= 1000 },
+  { id:'harvest_10000',   icon:'🌾', name:'Legendary Farmer', desc:'Harvest 10,000 crops. Wow',         check: s => (s.stats.totalHarvests||0) >= 10000 },
+  { id:'earn_100',        icon:'🪙', name:'Pocket Change',    desc:'Earn 100 coins lifetime',           check: s => (s.lifetimeCoins||0) >= 100 },
+  { id:'earn_1000',       icon:'💰', name:'Golden Harvest',   desc:'Earn 1,000 coins lifetime',         check: s => (s.lifetimeCoins||0) >= 1000 },
+  { id:'earn_10000',      icon:'🤑', name:'Truffle Tycoon',   desc:'Earn 10,000 coins lifetime',        check: s => (s.lifetimeCoins||0) >= 10000 },
+  { id:'earn_100000',     icon:'🏅', name:'High Roller',      desc:'Earn 100,000 coins lifetime',       check: s => (s.lifetimeCoins||0) >= 100000 },
+  { id:'earn_500000',     icon:'💰', name:'Half-Millionaire', desc:'Earn 500,000 coins lifetime',       check: s => (s.lifetimeCoins||0) >= 500000 },
+  { id:'earn_1000000',    icon:'💎', name:'Millionaire',      desc:'Earn 1,000,000 coins lifetime',     check: s => (s.lifetimeCoins||0) >= 1000000 },
+  { id:'earn_5000000',    icon:'👑', name:'Legendary Tycoon', desc:'5,000,000 coins. Sheeeesh',         check: s => (s.lifetimeCoins||0) >= 5000000 },
+  { id:'survive_thunder', icon:'⛈️', name:'Storm Survivor',   desc:'Survive a thunderstorm',            check: s => (s.stats.thunderSurvived||0) >= 1 },
+  { id:'survive_flood',   icon:'🌊', name:'Flood Survivor',   desc:'Survive a flood',                   check: s => (s.stats.floodSurvived||0) >= 1 },
+  { id:'rain_watered',    icon:'🌧️', name:'Free Water',       desc:'Have plots watered by rain',        check: s => (s.stats.rainWateredPlots||0) >= 1 },
+  { id:'full_grid',       icon:'🏡', name:'Full House',       desc:'Fill every plot at once',           check: s => s.plots.length > 0 && s.plots.every(p=>p.state!=='empty') },
+  { id:'gloves_uses',     icon:'🧤', name:'Green Thumb',      desc:'Use gloves 20 times',               check: s => (s.stats.glovesUses||0) >= 20 },
+  { id:'truffle_harvest', icon:'🍄', name:'Truffle Hunter',   desc:'Harvest your first Truffle',        check: s => (s.stats.truffleHarvests||0) >= 1 },
+  { id:'expand_max',      icon:'🗺️', name:'Land Baron',       desc:'Reach a 4×4 farm or larger',       check: s => s.rows >= 4 && s.cols >= 4 },
+  { id:'lost_to_weather', icon:'💀', name:"Nature's Wrath",   desc:'Lose 5+ crops to weather',          check: s => (s.stats.cropsLostToWeather||0) >= 5 },
+  { id:'sell_10_times',   icon:'🏪', name:'Market Regular',   desc:'Sell crops 10 times',               check: s => (s.stats.sellActions||0) >= 10 },
+  { id:'watered_20',      icon:'💧', name:'Diligent Farmer',  desc:'Water 20 individual plots',         check: s => (s.stats.totalWatered||0) >= 20 },
+  { id:'grand_banquet_1', icon:'🎊', name:'Grand Banquet',    desc:'Host your first Grand Banquet',     check: s => (s.banquet?.completedRuns||0) >= 1 },
+  { id:'grand_banquet_5', icon:'🏅', name:'Town Legend',      desc:'Host 5 Grand Banquets',             check: s => (s.banquet?.completedRuns||0) >= 5 },
+  { id:'pride_max',       icon:'🌟', name:'Town Pride',       desc:'Reach Town Pride Level 5',          check: s => (s.prideLevel||0) >= 5 },
+  { id:'times_begged_10', icon:'🙏', name:'Humble Beginnings',desc:'Beg for seeds 10 times',            check: s => (s.stats.timesBegged||0) >= 10 },
 ];
 
 export const WATER_COST      = 6;
@@ -81,8 +85,8 @@ export const BARN_BASE_CAP = 20;
 export const BARN_UPGRADES = [
   { cap: 30,  cost: 60   },
   { cap: 45,  cost: 150  },
-  { cap: 60, cost: 350  },
-  { cap: 80, cost: 2500 },
+  { cap: 60,  cost: 350  },
+  { cap: 80,  cost: 2500 },
   { cap: 100, cost: 5000 },
 ];
 
@@ -107,19 +111,30 @@ export const state = {
   weather: { current: 'clear', changedAt: Date.now(), lastRainAt: 0, lastThunderAt: 0, floodedRow: -1 },
   unlockedAchievements: [],
   stats: {
-    totalHarvests: 0, wheatHarvests: 0, totalWatered: 0, totalFertilized: 0,
-    sellActions: 0, cropsLostToWeather: 0, rainWateredPlots: 0,
-    thunderSurvived: 0, floodSurvived: 0, glovesUses: 0,
-    truffleHarvests: 0, weatherCounts: {},
-    everBoughtWater: false, everBoughtFert: false,
+    totalHarvests:      0,
+    wheatHarvests:      0,
+    cornHarvests:       0,   // NEW
+    pumpkinHarvests:    0,   // NEW
+    truffleHarvests:    0,
+    totalWatered:       0,
+    totalFertilized:    0,
+    sellActions:        0,
+    cropsLostToWeather: 0,
+    rainWateredPlots:   0,
+    thunderSurvived:    0,
+    floodSurvived:      0,
+    glovesUses:         0,
+    timesBegged:        0,   // NEW
+    weatherCounts:      {},
+    everBoughtWater:    false,
+    everBoughtFert:     false,
   },
   begTaps: 0,
   // Bodie queue system
-  bodieSeenTips: [],       // array of string keys for permanently-seen tips
-  bodieQueue: [],          // ordered queue of tip keys pending display
-  bodieCollectedTips: [],  // full log of {key,id,icon,text,timestamp} for Book of Barns
-  // Legacy field kept for migration compatibility
-  bodieLastReadTip: null,
+  bodieSeenTips:       [],
+  bodieQueue:          [],
+  bodieCollectedTips:  [],
+  bodieLastReadTip:    null,
   npcs: {},
   unlockedNpcs: ['kimchi'],
   merchant: {
@@ -133,6 +148,11 @@ export const state = {
     activeRiddleId: null,
     lastSundialAt: null,
   },
+  // Town Pride
+  pridePoints: 0,
+  prideLevel:  0,
+  // Grand Banquet
+  banquet: null,   // migrated on first access
 };
 
 export const settings = {
@@ -248,25 +268,30 @@ export function migrateState() {
   if (!state.unlockedAchievements) state.unlockedAchievements = [];
   if (!state.stats)             state.stats             = {};
   if (!state.stats.weatherCounts)  state.stats.weatherCounts  = {};
-  if (state.stats.wheatHarvests  === undefined) state.stats.wheatHarvests  = 0;
+  if (state.stats.wheatHarvests   === undefined) state.stats.wheatHarvests   = 0;
+  if (state.stats.cornHarvests    === undefined) state.stats.cornHarvests    = 0;
+  if (state.stats.pumpkinHarvests === undefined) state.stats.pumpkinHarvests = 0;
+  if (state.stats.truffleHarvests === undefined) state.stats.truffleHarvests = 0;
+  if (state.stats.timesBegged     === undefined) state.stats.timesBegged     = 0;
   if (state.stats.everBoughtWater === undefined) state.stats.everBoughtWater = false;
   if (state.stats.everBoughtFert  === undefined) state.stats.everBoughtFert  = false;
   if (state.begTaps === undefined) state.begTaps = 0;
 
-  // Migrate legacy Bodie fields to new queue system
-  if (!Array.isArray(state.bodieSeenTips)) state.bodieSeenTips = [];
-  if (!Array.isArray(state.bodieQueue))    state.bodieQueue    = [];
-  if (!Array.isArray(state.bodieCollectedTips)) state.bodieCollectedTips = [];
+  // Town Pride
+  if (state.pridePoints === undefined) state.pridePoints = 0;
+  if (state.prideLevel  === undefined) state.prideLevel  = 0;
 
-  // If a player had the old bodieLastReadTip / bodieSeenTip, seed the seen list
-  // so the tip they already read doesn't fire again as "new"
+  // Grand Banquet — migrated lazily in banquet.js via migrateBanquet()
+
+  // Bodie
+  if (!Array.isArray(state.bodieSeenTips))      state.bodieSeenTips      = [];
+  if (!Array.isArray(state.bodieQueue))          state.bodieQueue         = [];
+  if (!Array.isArray(state.bodieCollectedTips))  state.bodieCollectedTips = [];
   const legacyRead = state.bodieLastReadTip || state.bodieSeenTip;
   if (legacyRead && !state.bodieSeenTips.includes(legacyRead)) {
     state.bodieSeenTips.push(legacyRead);
   }
-  // Clean up legacy fields
   delete state.bodieSeenTip;
-  // Keep bodieLastReadTip for now (it's harmless) but don't rely on it
 
   state.plots.forEach(p => {
     if (!p.crop) p.crop = 'wheat';
@@ -283,7 +308,8 @@ export function migrateState() {
   if (state.merchant.lastSundialAt  === undefined) state.merchant.lastSundialAt  = null;
 }
 
-// ── GROW-DURATION HELPERS ─────────────────────────────────
+// ── GROW-DURATION HELPERS (kept for backward-compat) ──────
+// New code should import these from js/logic.js instead.
 
 export function computeGrowMs(cropKey, weatherMult, isBadWeather, opts = {}) {
   const crop = CROPS[cropKey] || CROPS.wheat;
@@ -300,20 +326,9 @@ export function computeGrowMs(cropKey, weatherMult, isBadWeather, opts = {}) {
   const effWeather = (opts.photosynthActive && weatherMult > 1.0) ? 1.0 : weatherMult;
   growMs *= effWeather;
 
-  growMs = Math.max(10000, growMs);
-
-  return growMs;
+  return Math.max(10000, growMs);
 }
 
-/**
- * Compute how much effective grow-time has elapsed for a plot.
- *
- * @param {object} plot
- * @param {number} waterSpeedup  - the divisor applied to post-water real time (e.g. 0.65)
- * @param {number} [nowOverride] - optional timestamp to use instead of Date.now().
- *                                 Pass frozenAt when Frozen Soil is active so the
- *                                 progress bar stops moving at the freeze moment.
- */
 export function computeEffectiveElapsed(plot, waterSpeedup, nowOverride) {
   const FALLBACK = 0.65;
   const speedup  = waterSpeedup != null ? waterSpeedup : FALLBACK;
@@ -325,86 +340,4 @@ export function computeEffectiveElapsed(plot, waterSpeedup, nowOverride) {
     elapsed  = bw + aw / speedup;
   }
   return elapsed;
-}
-
-// ── CENTRALIZED TIMER HELPERS ─────────────────────────────
-//
-// These replace the scattered local re-implementations in main.js and ui.js.
-// All timer UI (Farm Info Bar, plot toast, progress bars) must use these.
-
-/**
- * Returns the timestamp to treat as "now" for all growth calculations.
- * When Frozen Soil is active, time is pinned at the moment it was applied
- * so that all progress bars and countdowns visually pause.
- */
-export function effectiveNow() {
-  const eff = state.merchant && state.merchant.effect;
-  if (
-    eff &&
-    eff.id === 'frozen' &&
-    eff.frozenAt &&
-    (!eff.expiresAt || Date.now() < eff.expiresAt)
-  ) {
-    return eff.frozenAt;
-  }
-  return Date.now();
-}
-
-/**
- * Returns the water-speedup divisor for a given Cinna affinity level.
- * Cinna Lv5: 0.30 | Lv3: 0.40 | Lv1: 0.55 | base: 0.65
- *
- * This is the single source of truth — ui.js and main.js must NOT
- * re-declare this inline.
- *
- * @param {number} cinnaLevel - affinityLevel('cinna'), 0–5
- * @returns {number}
- */
-export function waterSpeedupFactor(cinnaLevel) {
-  if (cinnaLevel >= 5) return 0.30;
-  if (cinnaLevel >= 3) return 0.40;
-  if (cinnaLevel >= 1) return 0.55;
-  return WATER_SPEEDUP; // 0.65
-}
-
-/**
- * Compute the remaining milliseconds for a single planted plot.
- *
- * @param {object} plot        - a plot object with state === 'planted'
- * @param {object} growOpts    - options forwarded to computeGrowMs:
- *   { weatherMult, isBadWeather, truffleGrowMult, cornGrowMult,
- *     pumpkinWeatherMult, kalbiL5, photosynthActive }
- * @param {number} waterFactor - result of waterSpeedupFactor(cinnaLevel)
- *
- * @returns {{ effectiveMsRemaining: number, realMsRemaining: number }}
- *   effectiveMsRemaining: growth-credit ms still needed (ignores water slow-read)
- *   realMsRemaining:      wall-clock ms until the crop is actually done
- */
-export function computePlotRemainingMs(plot, growOpts, waterFactor) {
-  const now = effectiveNow();
-  const growMs = computeGrowMs(
-    plot.crop || 'wheat',
-    growOpts.weatherMult,
-    growOpts.isBadWeather,
-    {
-      truffleGrowMult:    growOpts.truffleGrowMult,
-      cornGrowMult:       growOpts.cornGrowMult,
-      pumpkinWeatherMult: growOpts.pumpkinWeatherMult,
-      kalbiL5:            growOpts.kalbiL5,
-      photosynthActive:   growOpts.photosynthActive,
-    }
-  );
-
-  const elapsed = computeEffectiveElapsed(plot, waterFactor, now);
-  const effectiveMsRemaining = Math.max(0, growMs - elapsed);
-
-  // Convert effective ms → real wall-clock ms.
-  // If the plot is watered, the remaining effective time still runs at the
-  // boosted rate, so real-time = effectiveMs * waterFactor.
-  // If not yet watered, effective time == real time.
-  const realMsRemaining = plot.watered
-    ? effectiveMsRemaining * waterFactor
-    : effectiveMsRemaining;
-
-  return { effectiveMsRemaining, realMsRemaining };
 }
