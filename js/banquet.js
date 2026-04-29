@@ -35,7 +35,7 @@ export const COMMUNAL_POT_REQUIREMENTS = POT_BASE;
 
 export const HARVEST_RUSH_START_LEN = 5;
 export const HARVEST_RUSH_MAX_LEN   = 10;
-export const HARVEST_RUSH_TIMER_MS  = 60_000; // 60 seconds total
+export const HARVEST_RUSH_TIMER_MS  = 45_000; // 45 seconds total
 
 // ── 15-PARTY BANQUET SCHEDULE ─────────────────────────────
 // Cycles: run index mod 15 determines the current party (0-indexed).
@@ -295,6 +295,8 @@ export function startHarvestRush() {
     timerMs:     HARVEST_RUSH_TIMER_MS,
     failed:      false,
     complete:    false,
+    failPending: false,
+    lastFailure: null,
   };
 
   saveState();
@@ -319,23 +321,26 @@ export function rushTap(cropKey) {
 
   const r = b.rush;
 
+  // If a fail is pending acknowledgement, ignore crop taps
+  if (r.failPending) return 'noop';
+
   // Check timer expiry
   if (Date.now() - r.startedAt > r.timerMs) {
-    r.failed = true;
-    b.phase  = 'pot';
-    currentPotRequirements().forEach(req => { b.pot[req.cropKey] = 0; });
+    r.failed      = true;
+    r.failPending = true;
+    r.lastFailure = { wrongCrop: cropKey, expectedCrop: r.pattern[r.playerInput.length], reason: 'expired' };
     saveState();
     return 'expired';
   }
 
-  const expected = r.pattern[r.playerInput.length];
+  const expectedCrop = r.pattern[r.playerInput.length];
   r.playerInput.push(cropKey);
 
-  if (cropKey !== expected) {
+  if (cropKey !== expectedCrop) {
+    // Wrong tap — enter failPending state instead of immediately resetting
     r.failed      = true;
-    r.playerInput = [];
-    b.phase       = 'pot';
-    currentPotRequirements().forEach(req => { b.pot[req.cropKey] = 0; });
+    r.failPending = true;
+    r.lastFailure = { wrongCrop: cropKey, expectedCrop, reason: 'wrong' };
     saveState();
     return 'fail';
   }
@@ -362,6 +367,24 @@ export function rushTap(cropKey) {
   r.playerInput = [];
   saveState();
   return 'stage_clear';
+}
+
+/**
+ * Called when player taps "Got it!" after a rush failure.
+ * Resets banquet back to pot phase so player can refill and try again.
+ */
+export function acknowledgeRushFail() {
+  migrateBanquet();
+  const b = state.banquet;
+  if (!b || !b.rush || !b.rush.failPending) return;
+
+  b.rush.failPending = false;
+  b.phase = 'pot';
+  // Reset pot deliveries so player must refill
+  currentPotRequirements().forEach(r => { b.pot[r.cropKey] = 0; });
+  b.rush = null;
+
+  saveState();
 }
 
 // ── FINISH & REWARDS ──────────────────────────────────────
@@ -399,12 +422,15 @@ export function tickBanquet() {
   const b = state.banquet;
   if (b.phase !== 'rush' || !b.rush) return;
 
+  // Skip timer expiry while a fail is pending acknowledgement
+  if (b.rush.failPending) return;
+
   if (Date.now() - b.rush.startedAt > b.rush.timerMs) {
-    b.rush.failed = true;
-    b.phase       = 'pot';
-    currentPotRequirements().forEach(r => { b.pot[r.cropKey] = 0; });
+    // Enter failPending for timer expiry too — show Bodie screen
+    b.rush.failed      = true;
+    b.rush.failPending = true;
+    b.rush.lastFailure = { wrongCrop: null, expectedCrop: b.rush.pattern[b.rush.playerInput.length], reason: 'expired' };
     saveState();
-    toast('⏰ Time expired! Re-fill the Communal Pot to try again.');
     import('./ui.js').then(({ renderTownTab }) => renderTownTab());
   }
 }
@@ -416,6 +442,15 @@ export function tickBanquet() {
 export function tickRushTimer() {
   const b = state.banquet;
   if (!b || b.phase !== 'rush' || !b.rush) return;
+
+  // If fail is pending, freeze the timer bar at zero
+  if (b.rush.failPending) {
+    const textEl = document.getElementById('rush-timer-text');
+    const barEl  = document.getElementById('rush-timer-bar');
+    if (textEl) { textEl.textContent = '0s'; textEl.style.color = 'var(--red)'; }
+    if (barEl)  { barEl.style.width = '0%'; barEl.style.background = 'var(--red)'; }
+    return;
+  }
 
   const elapsed   = Date.now() - b.rush.startedAt;
   const remaining = Math.max(0, Math.ceil((b.rush.timerMs - elapsed) / 1000));

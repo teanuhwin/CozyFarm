@@ -196,8 +196,15 @@ export function clearState() {
 // ── HELPERS ───────────────────────────────────────────────
 
 export function barnCap() {
-  if (state.barnLevel <= 0) return BARN_BASE_CAP;
-  return BARN_UPGRADES[state.barnLevel - 1].cap;
+  let cap;
+  if (state.barnLevel <= 0) {
+    cap = BARN_BASE_CAP;
+  } else {
+    cap = BARN_UPGRADES[state.barnLevel - 1].cap;
+  }
+  // +10 barn capacity per Town Pride Point earned
+  cap += (state.pridePoints || 0) * 10;
+  return cap;
 }
 
 export function totalBarnContents() {

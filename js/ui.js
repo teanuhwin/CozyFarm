@@ -444,7 +444,8 @@ export function updateHeader() {
   el('fert-pill').style.display          = showFert  ? 'flex' : 'none';
   el('header-fert-display').textContent  = state.fertilizer || 0;
   el('gloves-pill').style.display        = gd > 0    ? 'flex' : 'none';
-  el('gloves-display').textContent       = gd;
+  // Show ∞ symbol when Kimchi Lv.5 Golden Mitts is active (glovesMaxUses returns Infinity)
+  el('gloves-display').textContent       = glovesMaxUses() === Infinity ? '∞' : gd;
 }
 
 // ── FARM TOOLBAR ──────────────────────────────────────────
@@ -1075,6 +1076,11 @@ function renderHarvestRush() {
   const r = state.banquet?.rush;
   if (!r) return document.createElement('div');
 
+  // ── Fail-pending screen ───────────────────────────────
+  if (r.failPending) {
+    return renderHarvestRushFail(r);
+  }
+
   // Resolve host — may be NPC or merchant
   const MERCHANT_HOST_DATA = {
     mochi: { sprite: '☀️', name: 'Mochi' },
@@ -1165,6 +1171,84 @@ function renderHarvestRush() {
       <button class="btn" data-rush-crop="pumpkin" style="font-size:20px;padding:14px 8px">🎃<br><span style="font-size:10px">Pumpkin</span></button>
       <button class="btn" data-rush-crop="truffle" style="font-size:20px;padding:14px 8px">🍄<br><span style="font-size:10px">Truffle</span></button>
     </div>
+  `;
+  return div;
+}
+
+/**
+ * Renders the failure screen shown after a wrong tap or timer expiry.
+ * The pattern is shown with the expected crop highlighted in green.
+ * Four crop buttons are replaced by a Bodie message + "Got it!" button.
+ */
+function renderHarvestRushFail(r) {
+  const CROP_EMOJI_MAP = { wheat: '🌾', corn: '🌽', pumpkin: '🎃', truffle: '🍄' };
+  const failure = r.lastFailure || {};
+  const expectedCrop = failure.expectedCrop;
+  const isExpired    = failure.reason === 'expired';
+  const inputLen     = r.playerInput.length;
+  const pattern      = r.pattern;
+
+  // Pattern with expected crop highlighted green, wrong tap highlighted red
+  const patternHtml = pattern.map((ck, i) => {
+    const isExpectedPos = i === inputLen - 1 || (isExpired && i === inputLen);
+    const isExpectedCrop = ck === expectedCrop && i === (isExpired ? inputLen : inputLen - 1);
+    let bg = 'transparent';
+    let border = 'none';
+    if (isExpectedCrop) {
+      // Highlight the correct crop they needed to tap — green
+      bg = 'rgba(139,195,74,0.25)';
+      border = '2px solid var(--accent)';
+    }
+    return `<span style="
+      font-size:clamp(18px,5vw,28px);
+      padding:4px 6px;
+      display:inline-block;
+      border-radius:8px;
+      background:${bg};
+      border:${border};
+      transition:all 0.15s;
+    ">${CROP_EMOJI_MAP[ck]}</span>`;
+  }).join('');
+
+  const failTitle  = isExpired ? '⏰ Time\'s Up!' : '❌ Wrong Ingredient!';
+  const failColor  = 'var(--red)';
+  const bodieMsg   = isExpired
+    ? 'Hi! Im Bodie. Uh oh — time ran out! The highlighted ingredient is what was needed next. You\'ll have to refill the Communal Pot and try again...'
+    : 'Hi! Im Bodie. Uh oh. The wrong ingredient went in. See the highlighted one? That\'s what was needed. You\'ll have to start over...';
+
+  const div = document.createElement('div');
+  div.className = 'npc-card';
+  div.style.marginTop = '16px';
+  div.innerHTML = `
+    <!-- Frozen timer bar at 0 -->
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:11px;color:var(--text3)">⏱ Time remaining</span>
+        <span style="font-family:'Silkscreen',monospace;font-size:13px;color:var(--red)">0s</span>
+      </div>
+      <div class="affinity-bar-track">
+        <div class="affinity-bar-fill" style="width:0%;background:var(--red)"></div>
+      </div>
+    </div>
+
+    <!-- Failure title -->
+    <div style="text-align:center;margin-bottom:10px">
+      <div style="font-size:22px;font-weight:800;color:${failColor}">${failTitle}</div>
+    </div>
+
+    <!-- Pattern with highlighted expected crop -->
+    <div style="background:var(--bg2);border-radius:12px;padding:12px 8px;text-align:center;margin-bottom:12px;min-height:56px;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px">
+      ${patternHtml}
+    </div>
+
+    <!-- Bodie failure message -->
+    <div style="display:flex;align-items:flex-start;gap:10px;background:var(--bg3);border-radius:12px;padding:12px 14px;margin-bottom:14px;border:1.5px solid var(--border)">
+      <span style="font-size:22px;flex-shrink:0;transform:scaleX(-1);display:block">🐾</span>
+      <div style="font-size:12px;color:var(--text2);line-height:1.6;font-style:italic">"${bodieMsg}"</div>
+    </div>
+
+    <!-- Got it button -->
+    <button class="btn gold" data-rush-acknowledge="1" style="width:100%">Got it! Re-fill the Pot</button>
   `;
   return div;
 }

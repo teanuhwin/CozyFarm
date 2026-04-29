@@ -43,6 +43,7 @@ import {
 
 import {
   tickBanquet, tickRushTimer, deliverToPot, rushTap, migrateBanquet, isEndgameActive,
+  acknowledgeRushFail,
 } from './banquet.js';
 
 import {
@@ -155,12 +156,22 @@ function clickPlot(idx) {
     state.fertilizer--;
     plot.fertilized = true;
     state.stats.totalFertilized = (state.stats.totalFertilized || 0) + 1;
+
+    // Kola Lv.5: 25% chance instant grow on single fertilize
+    const instantChance = getFertInstantChance();
+    if (instantChance > 0 && Math.random() < instantChance) {
+      plot.state = 'ready';
+      toast('✨ Kola\'s magic! Instant growth!');
+    }
+
     saveState();
     renderPlot(idx);
     updateHeader();
     updateShopUI();
     updateFarmToolbar(selectedCrop, selectedTool);
-    toast('🌿 Fertilized! Extra yield on harvest.');
+    if (plot.state !== 'ready') {
+      toast('🌿 Fertilized! Extra yield on harvest.');
+    }
     checkAchievements();
     updateBodieUI();
     return;
@@ -297,8 +308,6 @@ function harvestPlot(idx) {
     const { chance: prideChance, bonus: prideBonus } = goldenYieldPerk(prideLevel);
     if (prideChance > 0 && Math.random() < prideChance) {
       yieldAmt += prideBonus;
-      // small visual hint — won't spam because it replaces the main toast
-      // actual toast assembled below with golden emoji
     }
   }
 
@@ -583,7 +592,6 @@ function expandGrid(type) {
 
 // ── BEG SYSTEM ────────────────────────────────────────────
 function begForSeeds() {
-  // Track beg stat
   state.stats.timesBegged = (state.stats.timesBegged || 0) + 1;
 
   state.begTaps = (state.begTaps || 0) + 1;
@@ -933,6 +941,16 @@ function wireTownEvents() {
       return;
     }
 
+    // Harvest Rush fail acknowledgement
+    const ackBtn = e.target.closest('[data-rush-acknowledge]');
+    if (ackBtn) {
+      acknowledgeRushFail();
+      import('./ui.js').then(({ renderTownTab: rtt, updateHeader: uh, updateShopUI: us }) => {
+        rtt(); uh(); us();
+      });
+      return;
+    }
+
     // Buy permit
     const permitBtn = e.target.closest('[data-buy-permit]');
     if (permitBtn) {
@@ -963,11 +981,11 @@ function handleRushResult(result) {
         rtt();
         break;
       case 'fail':
-        toast('❌ Wrong crop! Re-fill the Communal Pot to try again.');
+        // Render shows the Bodie fail screen — no extra toast needed
         rtt();
         break;
       case 'expired':
-        toast('⏰ Time\'s up! Re-fill the Communal Pot to try again.');
+        // Render shows the Bodie fail screen for timer expiry
         rtt();
         break;
       default:
@@ -1080,9 +1098,12 @@ function init() {
   el('setting-dark').checked    = settings.dark;
   el('setting-vibrate').checked = settings.vibrate;
 
+  // Determine effective "now" once — respects Frozen Soil on page reload
+  const catchUpNow         = effectiveNow();
   const catchUpWeatherMult = currentWeatherMultiplier();
   const catchUpWeather     = (state.weather && state.weather.current) || 'clear';
   const catchUpBadWeather  = ['rain', 'thunder', 'flood'].includes(catchUpWeather);
+
   state.plots.forEach(plot => {
     if (plot.state === 'planted') {
       const cropKey = plot.crop || 'wheat';
@@ -1093,7 +1114,8 @@ function init() {
         kalbiL5:            affinityLevelFor('kalbi') >= 5,
         photosynthActive:   isPhotosynthActive(),
       });
-      const elapsed = computeEffectiveElapsed(plot, getWaterSpeedup() ?? WATER_SPEEDUP);
+      // Pass catchUpNow so frozen plots are not advanced past the freeze timestamp
+      const elapsed = computeEffectiveElapsed(plot, getWaterSpeedup() ?? WATER_SPEEDUP, catchUpNow);
       if (elapsed >= growMs) plot.state = 'ready';
     }
   });
