@@ -243,71 +243,126 @@ export function updateBodieUI() {
 }
 
 // ── BOOK OF BARNS ─────────────────────────────────────────
-const BOOK_PREVIEW_COUNT = 3;
-let bodieBookExpanded = false;
+// Three-chapter tabbed book: Tip History | Weather Log | Banquet History
+let bodieBookChapter = 'tips'; // 'tips' | 'weather' | 'banquets'
 
 export function renderBodieBook() {
-  const list = el('bodie-book-list');
-  if (!list) return;
+  const card = el('bodie-book-card');
+  if (!card) return;
 
   import('./bodie.js').then(({ getCollectedTips }) => {
-    const entries = getCollectedTips();
-    list.innerHTML = '';
+    const tips = getCollectedTips();
+    const history = (state.banquet?.history || []).slice().reverse();
+    const weatherCounts = (state.stats && state.stats.weatherCounts) || {};
 
-    if (entries.length === 0) {
-      list.innerHTML = '<div style="padding:14px 16px;font-size:12px;color:var(--text3);font-style:italic;text-align:center">No entries yet. Tap 🐾 Bodie to collect tips!</div>';
-      bodieBookExpanded = false;
-      return;
-    }
+    card.innerHTML = '';
 
-    const countRow = document.createElement('div');
-    countRow.style.cssText = 'padding:10px 16px 6px;font-size:11px;color:var(--text3);font-weight:700;letter-spacing:0.05em;text-transform:uppercase;border-bottom:1px solid var(--border)';
-    countRow.textContent = `${entries.length} entr${entries.length === 1 ? 'y' : 'ies'} collected`;
-    list.appendChild(countRow);
-
-    const visible = bodieBookExpanded ? entries : entries.slice(0, BOOK_PREVIEW_COUNT);
-
-    visible.forEach((entry, idx) => {
-      const isLast = idx === visible.length - 1 && (bodieBookExpanded || entries.length <= BOOK_PREVIEW_COUNT);
-      const row  = document.createElement('div');
-      row.style.cssText = `display:flex;align-items:flex-start;gap:12px;padding:12px 16px;${isLast ? '' : 'border-bottom:1px solid var(--border)'}`;
-
-      const iconEl = document.createElement('div');
-      iconEl.style.cssText = 'font-size:18px;flex-shrink:0;margin-top:1px;line-height:1';
-      iconEl.textContent = entry.icon || '🐾';
-
-      const body = document.createElement('div');
-      body.style.cssText = 'flex:1;min-width:0';
-
-      const text = document.createElement('div');
-      text.style.cssText = 'font-size:12px;color:var(--text);line-height:1.5';
-      text.textContent = entry.text;
-
-      const meta = document.createElement('div');
-      meta.style.cssText = 'font-size:10px;color:var(--text3);margin-top:3px;font-family:"Silkscreen",monospace;font-weight:400';
-      meta.textContent = formatEntryDate(entry.timestamp);
-
-      body.appendChild(text);
-      body.appendChild(meta);
-      row.appendChild(iconEl);
-      row.appendChild(body);
-      list.appendChild(row);
-    });
-
-    if (entries.length > BOOK_PREVIEW_COUNT) {
-      const toggleRow = document.createElement('div');
-      toggleRow.style.cssText = 'border-top:1px solid var(--border);padding:10px 16px;text-align:center';
-      const toggleBtn = document.createElement('button');
-      toggleBtn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:12px;font-weight:700;color:var(--accent2);font-family:"Nunito",sans-serif;padding:0';
-      const hidden = entries.length - BOOK_PREVIEW_COUNT;
-      toggleBtn.textContent = bodieBookExpanded ? 'Show less ▲' : `Show ${hidden} more ▼`;
-      toggleBtn.addEventListener('click', () => {
-        bodieBookExpanded = !bodieBookExpanded;
+    // ── Chapter tab bar ──────────────────────────────────
+    const tabBar = document.createElement('div');
+    tabBar.className = 'book-tab-bar';
+    const chapters = [
+      { id: 'tips',     label: '📖 Tips',     count: tips.length },
+      { id: 'weather',  label: '🌦️ Weather',  count: Object.values(weatherCounts).reduce((a,b) => a+b, 0) },
+      { id: 'banquets', label: '🎊 Banquets', count: history.length },
+    ];
+    chapters.forEach(ch => {
+      const btn = document.createElement('button');
+      btn.className = 'book-tab-btn' + (bodieBookChapter === ch.id ? ' active' : '');
+      btn.innerHTML = `${ch.label}<span class="book-tab-count">${ch.count}</span>`;
+      btn.addEventListener('click', () => {
+        bodieBookChapter = ch.id;
         renderBodieBook();
       });
-      toggleRow.appendChild(toggleBtn);
-      list.appendChild(toggleRow);
+      tabBar.appendChild(btn);
+    });
+    card.appendChild(tabBar);
+
+    // ── Chapter content ──────────────────────────────────
+    const body = document.createElement('div');
+    body.className = 'book-body';
+
+    if (bodieBookChapter === 'tips') {
+      renderBookTips(body, tips);
+    } else if (bodieBookChapter === 'weather') {
+      renderBookWeather(body, weatherCounts);
+    } else {
+      renderBookBanquets(body, history);
     }
+
+    card.appendChild(body);
+  });
+}
+
+function renderBookTips(container, tips) {
+  if (tips.length === 0) {
+    container.innerHTML = '<div class="book-empty">No entries yet. Tap 🐾 Bodie to collect tips!</div>';
+    return;
+  }
+  tips.forEach((entry, idx) => {
+    const row = document.createElement('div');
+    row.className = 'book-entry' + (idx < tips.length - 1 ? ' book-entry-sep' : '');
+    row.innerHTML = `
+      <span class="book-entry-icon">${entry.icon || '🐾'}</span>
+      <div class="book-entry-body">
+        <div class="book-entry-text">${entry.text}</div>
+        <div class="book-entry-meta">${formatEntryDate(entry.timestamp)}</div>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function renderBookWeather(container, counts) {
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  if (total === 0) {
+    container.innerHTML = '<div class="book-empty">No weather events recorded yet.</div>';
+    return;
+  }
+  Object.values(WEATHER_TYPES).forEach(w => {
+    const count = counts[w.id] || 0;
+    if (count === 0) return;
+    const pct = Math.round((count / total) * 100);
+    const row = document.createElement('div');
+    row.className = 'book-weather-row';
+    row.innerHTML = `
+      <span style="font-size:20px">${w.icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800;font-size:13px;margin-bottom:3px">${w.name}</div>
+        <div class="affinity-bar-track"><div class="affinity-bar-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div style="font-family:'Silkscreen',monospace;font-size:10px;color:var(--text3);text-align:right;flex-shrink:0">
+        <div style="color:var(--text2)">${count}×</div>
+        <div>${pct}%</div>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function renderBookBanquets(container, history) {
+  if (history.length === 0) {
+    container.innerHTML = '<div class="book-empty">No banquets hosted yet. Complete a Grand Banquet to start your chronicle!</div>';
+    return;
+  }
+  history.forEach((entry, idx) => {
+    const MERCHANT_HOST_NAMES = { mochi: 'Mochi ☀️', moto: 'Moto 🌙' };
+    const hostName = MERCHANT_HOST_NAMES[entry.hostId] ?? (NPC_DATA[entry.hostId]?.name || entry.hostId);
+    const row = document.createElement('div');
+    row.className = 'book-entry' + (idx < history.length - 1 ? ' book-entry-sep' : '');
+    row.innerHTML = `
+      <span class="book-entry-icon" style="font-size:20px">${entry.emoji}</span>
+      <div class="book-entry-body">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px">
+          <span style="font-weight:800;font-size:13px;color:var(--accent2)">${entry.partyName}</span>
+          <span style="font-family:'Silkscreen',monospace;font-size:9px;color:var(--text3);background:var(--bg3);padding:1px 5px;border-radius:4px">#${entry.run}</span>
+        </div>
+        <div class="book-entry-text" style="font-style:italic">"${entry.storyText}"</div>
+        <div class="book-entry-meta" style="margin-top:4px">
+          ${entry.season} · Hosted by ${hostName} · +${entry.pridePointsEarned} Pride Point · ${formatEntryDate(entry.completedAt)}
+        </div>
+      </div>
+    `;
+    container.appendChild(row);
   });
 }
 
@@ -444,7 +499,6 @@ export function updateHeader() {
   el('fert-pill').style.display          = showFert  ? 'flex' : 'none';
   el('header-fert-display').textContent  = state.fertilizer || 0;
   el('gloves-pill').style.display        = gd > 0    ? 'flex' : 'none';
-  // Show ∞ symbol when Kimchi Lv.5 Golden Mitts is active (glovesMaxUses returns Infinity)
   el('gloves-display').textContent       = glovesMaxUses() === Infinity ? '∞' : gd;
 }
 
@@ -1175,11 +1229,6 @@ function renderHarvestRush() {
   return div;
 }
 
-/**
- * Renders the failure screen shown after a wrong tap or timer expiry.
- * The pattern is shown with the expected crop highlighted in green.
- * Four crop buttons are replaced by a Bodie message + "Got it!" button.
- */
 function renderHarvestRushFail(r) {
   const CROP_EMOJI_MAP = { wheat: '🌾', corn: '🌽', pumpkin: '🎃', truffle: '🍄' };
   const failure = r.lastFailure || {};
@@ -1188,14 +1237,11 @@ function renderHarvestRushFail(r) {
   const inputLen     = r.playerInput.length;
   const pattern      = r.pattern;
 
-  // Pattern with expected crop highlighted green, wrong tap highlighted red
   const patternHtml = pattern.map((ck, i) => {
-    const isExpectedPos = i === inputLen - 1 || (isExpired && i === inputLen);
     const isExpectedCrop = ck === expectedCrop && i === (isExpired ? inputLen : inputLen - 1);
     let bg = 'transparent';
     let border = 'none';
     if (isExpectedCrop) {
-      // Highlight the correct crop they needed to tap — green
       bg = 'rgba(139,195,74,0.25)';
       border = '2px solid var(--accent)';
     }
@@ -1211,7 +1257,6 @@ function renderHarvestRushFail(r) {
   }).join('');
 
   const failTitle  = isExpired ? '⏰ Time\'s Up!' : '❌ Wrong Ingredient!';
-  const failColor  = 'var(--red)';
   const bodieMsg   = isExpired
     ? 'Hi! Im Bodie. Uh oh — time ran out! The highlighted ingredient is what was needed next. You\'ll have to refill the Communal Pot and try again...'
     : 'Hi! Im Bodie. Uh oh. The wrong ingredient went in. See the highlighted one? That\'s what was needed. You\'ll have to start over...';
@@ -1220,7 +1265,6 @@ function renderHarvestRushFail(r) {
   div.className = 'npc-card';
   div.style.marginTop = '16px';
   div.innerHTML = `
-    <!-- Frozen timer bar at 0 -->
     <div style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
         <span style="font-size:11px;color:var(--text3)">⏱ Time remaining</span>
@@ -1230,44 +1274,109 @@ function renderHarvestRushFail(r) {
         <div class="affinity-bar-fill" style="width:0%;background:var(--red)"></div>
       </div>
     </div>
-
-    <!-- Failure title -->
     <div style="text-align:center;margin-bottom:10px">
-      <div style="font-size:22px;font-weight:800;color:${failColor}">${failTitle}</div>
+      <div style="font-size:22px;font-weight:800;color:var(--red)">${failTitle}</div>
     </div>
-
-    <!-- Pattern with highlighted expected crop -->
     <div style="background:var(--bg2);border-radius:12px;padding:12px 8px;text-align:center;margin-bottom:12px;min-height:56px;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px">
       ${patternHtml}
     </div>
-
-    <!-- Bodie failure message -->
     <div style="display:flex;align-items:flex-start;gap:10px;background:var(--bg3);border-radius:12px;padding:12px 14px;margin-bottom:14px;border:1.5px solid var(--border)">
       <span style="font-size:22px;flex-shrink:0;transform:scaleX(-1);display:block">🐾</span>
       <div style="font-size:12px;color:var(--text2);line-height:1.6;font-style:italic">"${bodieMsg}"</div>
     </div>
-
-    <!-- Got it button -->
     <button class="btn gold" data-rush-acknowledge="1" style="width:100%">Got it! Re-fill the Pot</button>
   `;
   return div;
 }
 
 // ── LOG TAB ───────────────────────────────────────────────
+// Order: Weather History → Achievements (chains) → Stats (3-col)
 export function renderLogTab() {
-  renderStats();
   renderWeatherHistory();
   renderAchievements();
+  renderStats();
 }
 
+// ── ACHIEVEMENT CHAIN DEFINITIONS ─────────────────────────
+const ACHIEVEMENT_CHAINS = [
+  {
+    label: '🪙 Coins Earned',
+    ids: ['earn_100','earn_1000','earn_10000','earn_100000','earn_500000','earn_1000000','earn_5000000'],
+  },
+  {
+    label: '🌾 Crops Harvested',
+    ids: ['first_harvest','harvest_10','harvest_100','harvest_10000'],
+  },
+  {
+    label: '🎊 Grand Banquets',
+    ids: ['grand_banquet_1','grand_banquet_5'],
+  },
+];
+
+// IDs that belong to a chain (excluded from singles rendering)
+const CHAINED_IDS = new Set(ACHIEVEMENT_CHAINS.flatMap(c => c.ids));
+
 function renderAchievements() {
-  const grid = el('achievement-grid');
-  const prog = el('achievement-progress');
-  if (!grid) return;
+  const container = el('achievement-grid');
+  const prog      = el('achievement-progress');
+  if (!container) return;
   const unlocked = state.unlockedAchievements || [];
   prog.textContent = `${unlocked.length}/${ACHIEVEMENTS.length}`;
-  grid.innerHTML = '';
-  ACHIEVEMENTS.forEach(a => {
+
+  // Build a lookup map
+  const byId = Object.fromEntries(ACHIEVEMENTS.map(a => [a.id, a]));
+
+  container.innerHTML = '';
+
+  // ── Chain cards ──────────────────────────────────────
+  ACHIEVEMENT_CHAINS.forEach(chain => {
+    const tiers = chain.ids.map(id => byId[id]).filter(Boolean);
+    const lastUnlockedIdx = tiers.reduce((max, t, i) => unlocked.includes(t.id) ? i : max, -1);
+    const currentTier    = tiers[lastUnlockedIdx] || null;
+    const nextTier       = tiers[lastUnlockedIdx + 1] || null;
+    const remaining      = tiers.length - (lastUnlockedIdx + 1);
+    const allDone        = remaining === 0;
+
+    const card = document.createElement('div');
+    card.className = 'achievement-chain-card' + (allDone ? ' achievement-chain-done' : '');
+
+    // Progress bar: fraction of tiers unlocked
+    const pct = Math.round(((lastUnlockedIdx + 1) / tiers.length) * 100);
+
+    card.innerHTML = `
+      <div class="chain-header">
+        <span class="chain-label">${chain.label}</span>
+        <span class="chain-count">${lastUnlockedIdx + 1}/${tiers.length}</span>
+      </div>
+      <div class="affinity-bar-track" style="margin:6px 0 8px">
+        <div class="affinity-bar-fill" style="width:${pct}%;background:${allDone ? 'var(--gold)' : 'var(--accent)'}"></div>
+      </div>
+      ${currentTier ? `
+        <div class="chain-current">
+          <span class="chain-tier-icon">${currentTier.icon}</span>
+          <div>
+            <div class="chain-tier-name">${currentTier.name}</div>
+            <div class="chain-tier-desc">${currentTier.desc}</div>
+          </div>
+        </div>
+      ` : `<div class="chain-tier-desc" style="color:var(--text3);font-style:italic">Not yet started</div>`}
+      ${nextTier ? `
+        <div class="chain-next">
+          <span style="font-size:10px;color:var(--text3)">Next: </span>
+          <span style="font-size:11px;color:var(--text2);font-weight:700">${nextTier.name}</span>
+          <span style="font-size:10px;color:var(--text3)"> — ${nextTier.desc}</span>
+        </div>
+      ` : (allDone ? `<div class="chain-next" style="color:var(--gold)">✨ All tiers complete!</div>` : '')}
+      ${remaining > 1 ? `<div style="font-size:10px;color:var(--text3);margin-top:4px">${remaining} tier${remaining!==1?'s':''} remaining</div>` : ''}
+    `;
+    container.appendChild(card);
+  });
+
+  // ── Single achievement cards (non-chained) ───────────
+  const singleWrapper = document.createElement('div');
+  singleWrapper.className = 'achievement-singles-grid';
+
+  ACHIEVEMENTS.filter(a => !CHAINED_IDS.has(a.id)).forEach(a => {
     const isUnlocked = unlocked.includes(a.id);
     const card = document.createElement('div');
     card.className = 'achievement-card ' + (isUnlocked ? 'unlocked' : 'locked');
@@ -1277,29 +1386,31 @@ function renderAchievements() {
       <div class="achievement-desc">${isUnlocked ? a.desc : '???'}</div>
       ${isUnlocked ? '<div class="achievement-badge">✓</div>' : ''}
     `;
-    grid.appendChild(card);
+    singleWrapper.appendChild(card);
   });
+
+  container.appendChild(singleWrapper);
 }
 
+// ── STATS (3-col, no Town Pride Points) ──────────────────
 function renderStats() {
   const grid = el('stats-grid');
   if (!grid) return;
   const s = state.stats || {};
   const items = [
-    { icon:'🌾', label:'Crops Harvested',            val: s.totalHarvests     || 0 },
-    { icon:'🪙', label:'Lifetime Coins',              val: state.lifetimeCoins || 0 },
-    { icon:'🌾', label:'Wheat Harvested',             val: s.wheatHarvests     || 0 },
-    { icon:'🌽', label:'Corn Harvested',              val: s.cornHarvests      || 0 },
-    { icon:'🎃', label:'Pumpkins Harvested',          val: s.pumpkinHarvests   || 0 },
-    { icon:'🍄', label:'Truffles Harvested',          val: s.truffleHarvests   || 0 },
-    { icon:'💧', label:'Manually Watered',            val: s.totalWatered      || 0 },
-    { icon:'🌿', label:'Manually Fertilized',         val: s.totalFertilized   || 0 },
-    { icon:'🏪', label:'Sell Actions',                val: s.sellActions       || 0 },
-    { icon:'💀', label:'Crops Lost to Weather',       val: s.cropsLostToWeather|| 0 },
-    { icon:'🧤', label:'Gloves Uses',                 val: s.glovesUses        || 0 },
-    { icon:'🙏', label:'Times Begged',                val: s.timesBegged       || 0 },
-    { icon:'🎊', label:'Banquets Hosted',             val: state.banquet?.completedRuns || 0 },
-    { icon:'🌟', label:'Town Pride Points',           val: state.pridePoints   || 0 },
+    { icon:'🌾', label:'Crops Harvested',      val: s.totalHarvests     || 0 },
+    { icon:'🪙', label:'Lifetime Coins',        val: state.lifetimeCoins || 0 },
+    { icon:'🏪', label:'Sell Actions',          val: s.sellActions       || 0 },
+    { icon:'🌾', label:'Wheat Harvested',       val: s.wheatHarvests     || 0 },
+    { icon:'🌽', label:'Corn Harvested',        val: s.cornHarvests      || 0 },
+    { icon:'🎃', label:'Pumpkins Harvested',    val: s.pumpkinHarvests   || 0 },
+    { icon:'🍄', label:'Truffles Harvested',    val: s.truffleHarvests   || 0 },
+    { icon:'💧', label:'Plots Watered',         val: s.totalWatered      || 0 },
+    { icon:'🌿', label:'Plots Fertilized',      val: s.totalFertilized   || 0 },
+    { icon:'💀', label:'Lost to Weather',       val: s.cropsLostToWeather|| 0 },
+    { icon:'🧤', label:'Gloves Uses',           val: s.glovesUses        || 0 },
+    { icon:'🎊', label:'Banquets Hosted',       val: state.banquet?.completedRuns || 0 },
+    { icon:'🙏', label:'Times Begged',          val: s.timesBegged       || 0 },
   ];
   grid.innerHTML = '';
   items.forEach(item => {

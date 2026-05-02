@@ -185,6 +185,7 @@ export function migrateBanquet() {
       completedRuns: 0,
       pot: {},                 // { wheat: delivered, corn: delivered, … }
       rush: null,              // Harvest Rush runtime state
+      history: [],             // [ { run, partyName, emoji, hostId, season, completedAt, storyText, pridePointsEarned, pridePointsTotal } ]
     };
   }
   const b = state.banquet;
@@ -193,6 +194,7 @@ export function migrateBanquet() {
   if (b.completedRuns === undefined) b.completedRuns = 0;
   if (!b.pot)                         b.pot           = {};
   if (b.rush          === undefined)  b.rush          = null;
+  if (!Array.isArray(b.history))      b.history       = [];
 }
 
 // ── PERMIT ────────────────────────────────────────────────
@@ -390,7 +392,10 @@ export function acknowledgeRushFail() {
 // ── FINISH & REWARDS ──────────────────────────────────────
 
 function finishBanquet() {
-  const b = state.banquet;
+  migrateBanquet();
+  const b     = state.banquet;
+  const party = currentParty(); // capture party BEFORE incrementing completedRuns
+
   b.completedRuns = (b.completedRuns || 0) + 1;
   b.phase         = 'idle';
   b.permitPaid    = false;
@@ -400,6 +405,19 @@ function finishBanquet() {
   state.pridePoints = (state.pridePoints || 0) + 1;
   const newLevel    = prideLevelFromPoints(state.pridePoints);
   state.prideLevel  = newLevel;
+
+  // Record history entry
+  b.history.push({
+    run:               b.completedRuns,
+    partyName:         party.name,
+    emoji:             party.emoji,
+    hostId:            party.hostId,
+    season:            party.season,
+    completedAt:       Date.now(),
+    storyText:         party.desc,
+    pridePointsEarned: 1,
+    pridePointsTotal:  state.pridePoints,
+  });
 
   saveState();
 

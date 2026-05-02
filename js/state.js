@@ -113,8 +113,8 @@ export const state = {
   stats: {
     totalHarvests:      0,
     wheatHarvests:      0,
-    cornHarvests:       0,   // NEW
-    pumpkinHarvests:    0,   // NEW
+    cornHarvests:       0,
+    pumpkinHarvests:    0,
     truffleHarvests:    0,
     totalWatered:       0,
     totalFertilized:    0,
@@ -124,7 +124,7 @@ export const state = {
     thunderSurvived:    0,
     floodSurvived:      0,
     glovesUses:         0,
-    timesBegged:        0,   // NEW
+    timesBegged:        0,
     weatherCounts:      {},
     everBoughtWater:    false,
     everBoughtFert:     false,
@@ -288,7 +288,13 @@ export function migrateState() {
   if (state.pridePoints === undefined) state.pridePoints = 0;
   if (state.prideLevel  === undefined) state.prideLevel  = 0;
 
-  // Grand Banquet — migrated lazily in banquet.js via migrateBanquet()
+  // Grand Banquet — belt-and-suspenders history guard.
+  // migrateBanquet() in banquet.js is the primary handler, but migrateState()
+  // runs first and may be called independently (e.g. uploadSave), so we ensure
+  // the history array exists here too before any banquet code touches it.
+  if (state.banquet && !Array.isArray(state.banquet.history)) {
+    state.banquet.history = [];
+  }
 
   // Bodie
   if (!Array.isArray(state.bodieSeenTips))      state.bodieSeenTips      = [];
