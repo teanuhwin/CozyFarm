@@ -732,13 +732,99 @@ body:has(#tab-farm.active) #toast { display: none !important; }
   word-break: normal;
 }
 
-/* ── LOG TAB ── */
-.achievement-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+/* ── LOG TAB — ACHIEVEMENT OUTER CONTAINER ── */
+.achievement-grid-outer {
+  display: flex;
+  flex-direction: column;
   gap: 10px;
   margin-bottom: 10px;
 }
+
+/* ── ACHIEVEMENT CHAIN CARDS ── */
+.achievement-chain-card {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  transition: border-color 0.3s, background 0.3s;
+}
+
+.achievement-chain-done {
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 6%, var(--card));
+}
+
+.chain-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.chain-label {
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.chain-count {
+  font-family: 'Silkscreen', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  background: var(--bg3);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+.achievement-chain-done .chain-count {
+  background: color-mix(in srgb, var(--gold) 20%, var(--bg3));
+  color: var(--gold);
+}
+
+.chain-current {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.chain-tier-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+.chain-tier-name {
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--accent2);
+  margin-bottom: 2px;
+}
+
+.chain-tier-desc {
+  font-size: 11px;
+  color: var(--text2);
+  line-height: 1.4;
+}
+
+.chain-next {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  line-height: 1.4;
+}
+
+/* ── ACHIEVEMENT SINGLES SUB-GRID ── */
+.achievement-singles-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* ── ACHIEVEMENT SINGLE CARDS (unchanged visuals) ── */
 .achievement-card {
   background: var(--card);
   border: 1.5px solid var(--border);
@@ -769,29 +855,31 @@ body:has(#tab-farm.active) #toast { display: none !important; }
   font-weight: 400;
 }
 
+/* ── STATS GRID — 3 columns, tighter padding ── */
 .stats-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
   margin-bottom: 10px;
 }
+
 .stat-card {
   background: var(--card);
   border: 1.5px solid var(--border);
-  border-radius: 14px;
-  padding: 12px 14px;
+  border-radius: 12px;
+  padding: 9px 10px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
-.stat-card-label { font-size: 11px; color: var(--text2); font-weight: 400; }
+.stat-card-label { font-size: 10px; color: var(--text2); font-weight: 400; line-height: 1.3; }
 .stat-card-val   {
-  font-size: 20px;
+  font-size: 17px;
   font-family: 'Silkscreen', monospace;
   font-weight: 400;
   color: var(--accent2);
 }
-.stat-card-icon  { font-size: 16px; }
+.stat-card-icon  { font-size: 14px; }
 
 /* ── TOWN TAB ── */
 .town-locked {
@@ -1219,7 +1307,6 @@ body:has(#tab-farm.active) #toast { display: none !important; }
 }
 
 /* ── HARVEST RUSH ── */
-/* Tap buttons already use .btn, but we make them taller and more tappable */
 [data-rush-crop] {
   border-radius: 14px;
   line-height: 1.4;
@@ -1228,3 +1315,125 @@ body:has(#tab-farm.active) #toast { display: none !important; }
   transition: transform 0.1s, background 0.1s;
 }
 [data-rush-crop]:active { transform: scale(0.92); }
+
+/* ── BOOK OF BARNS ── */
+
+/* Chapter tab bar across the top */
+.book-tab-bar {
+  display: flex;
+  border-bottom: 1.5px solid var(--border);
+}
+
+.book-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 6px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1.5px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text3);
+  cursor: pointer;
+  transition: color 0.18s, border-color 0.18s;
+  white-space: nowrap;
+}
+
+.book-tab-btn.active {
+  color: var(--accent2);
+  border-bottom-color: var(--accent2);
+}
+
+.book-tab-btn:hover:not(.active) {
+  color: var(--text2);
+}
+
+.book-tab-count {
+  font-family: 'Silkscreen', monospace;
+  font-size: 9px;
+  background: var(--bg3);
+  border-radius: 8px;
+  padding: 1px 5px;
+  color: var(--text3);
+  line-height: 1.4;
+}
+
+.book-tab-btn.active .book-tab-count {
+  background: color-mix(in srgb, var(--accent2) 15%, var(--bg3));
+  color: var(--accent2);
+}
+
+/* Chapter body — scrollable entries */
+.book-body {
+  display: flex;
+  flex-direction: column;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+/* Individual entry row */
+.book-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.book-entry-sep {
+  border-bottom: 1px solid var(--border);
+}
+
+.book-entry-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  line-height: 1;
+}
+
+.book-entry-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.book-entry-text {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.book-entry-meta {
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 3px;
+  font-family: 'Silkscreen', monospace;
+  font-weight: 400;
+}
+
+/* Weather rows inside Book */
+.book-weather-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.book-weather-row:last-child {
+  border-bottom: none;
+}
+
+/* Empty state */
+.book-empty {
+  padding: 20px 16px;
+  font-size: 12px;
+  color: var(--text3);
+  font-style: italic;
+  text-align: center;
+  line-height: 1.6;
+}

@@ -326,9 +326,8 @@
   </div><!-- /tab-shop -->
 
   <!-- ── LOG TAB ── -->
+  <!-- Section order: Weather History → Achievements → Stats -->
   <div id="tab-log" class="tab-panel">
-    <div class="section-title">📊 Stats</div>
-    <div class="stats-grid" id="stats-grid"></div>
 
     <div class="section-title">🌦️ Weather History</div>
     <div id="weather-history-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
@@ -337,7 +336,12 @@
       🏆 Achievements
       <span id="achievement-progress" style="font-size:10px;color:var(--text3);margin-left:4px"></span>
     </div>
-    <div class="achievement-grid" id="achievement-grid"></div>
+    <!-- achievement-grid is a plain flex-column container; JS appends chain cards then singles grid -->
+    <div id="achievement-grid" class="achievement-grid-outer"></div>
+
+    <div class="section-title" style="margin-top:20px">📊 Stats</div>
+    <div class="stats-grid" id="stats-grid"></div>
+
   </div>
 
   <!-- ── TOWN TAB ── -->
@@ -407,13 +411,8 @@
     </div>
 
     <div class="section-title">📖 Bodie's Book of Barns</div>
-    <div class="settings-card" id="bodie-book-card" style="padding:0;overflow:hidden">
-      <div id="bodie-book-list">
-        <div style="padding:14px 16px;font-size:12px;color:var(--text3);font-style:italic;text-align:center">
-          No entries yet. Tap 🐾 Bodie to collect tips!
-        </div>
-      </div>
-    </div>
+    <!-- renderBodieBook() replaces all content inside this card -->
+    <div class="settings-card" id="bodie-book-card" style="padding:0;overflow:hidden"></div>
 
     <div class="section-title">⚠️ Danger Zone</div>
     <div class="settings-card danger-zone">
